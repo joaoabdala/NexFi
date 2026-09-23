@@ -55,7 +55,7 @@ if "%NEEDS_SETUP%"=="1" (
 )
 
 echo [NexFi] Iniciando backend ^(FastAPI^) em http://localhost:8000 ...
-start "NexFi - Backend" cmd /k "cd /d "%BACKEND%" && .venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000 --reload"
+start "NexFi - Backend" cmd /k "cd /d "%BACKEND%" && .venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port 8000 --reload"
 
 echo [NexFi] Iniciando frontend ^(Vite^) em http://localhost:5173 ...
 start "NexFi - Frontend" cmd /k "cd /d "%FRONTEND%" && npm run dev"

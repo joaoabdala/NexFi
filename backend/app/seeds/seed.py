@@ -48,7 +48,19 @@ def add_months_ago(months: int, day: int | None = None) -> date:
     return result
 
 
+def ensure_local_database(url) -> None:
+    """O seed cria um ADMIN com senha pública (demo123) e dados fictícios, e chama create_all
+    fora do Alembic — nunca pode rodar contra um banco remoto (ex.: o Neon de produção)."""
+    if url.get_backend_name() == "sqlite" or url.host in ("localhost", "127.0.0.1", "::1"):
+        return
+    raise SystemExit(
+        f"Seed recusado: o banco '{url.host}' não é local. "
+        "O seed de demonstração só roda em SQLite ou Postgres em localhost."
+    )
+
+
 def run() -> None:
+    ensure_local_database(engine.url)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:

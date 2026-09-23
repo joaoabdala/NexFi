@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic import field_validator, model_validator
@@ -55,7 +56,10 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # O .env padrão é só para o dev local (SQLite). Comandos pontuais contra o Neon usam um
+    # arquivo separado, escolhido explicitamente: NEXFI_ENV_FILE=.env.neon alembic upgrade head
+    # Na Vercel nenhum dos dois existe — as variáveis vêm do ambiente do projeto.
+    return Settings(_env_file=os.environ.get("NEXFI_ENV_FILE", ".env"))
 
 
 settings = get_settings()

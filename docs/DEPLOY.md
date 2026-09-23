@@ -33,19 +33,28 @@ Como funciona:
    - Pode colar como está: a API troca `postgresql://` por `postgresql+psycopg://` sozinha.
    - **Nunca** versionar essa string nem colá-la em chats/issues.
 
-## 2. Migrations e primeiro usuário (rodar da sua máquina)
+## 2. Migrations (rodar da sua máquina)
 
 As migrations **não** rodam no deploy (evita que um preview deployment altere o banco de
-produção). Rodam manualmente, com o `backend/.env` apontando para o Neon:
+produção). Rodam manualmente da sua máquina.
+
+A connection string do Neon fica em **`backend/.env.neon`** (gitignored), com uma única linha
+`DATABASE_URL=...`. Ela **não** é carregada por padrão: o `backend/.env` continua apontando para o
+SQLite local, então `start.bat`, `setup.bat` e os testes nunca tocam a produção. Para um comando
+contra o Neon, escolha o arquivo explicitamente (Git Bash):
 
 ```bash
 cd backend
-.venv\Scripts\alembic upgrade head
-.venv\Scripts\python -m app.seeds.create_admin   # pede e-mail, nome e senha no terminal
+NEXFI_ENV_FILE=.env.neon .venv/Scripts/alembic upgrade head
 ```
 
-> **Não** rode `python -m app.seeds.seed` no Neon: ele cria o usuário demo com dados fictícios.
-> Para voltar a desenvolver com SQLite, troque o `DATABASE_URL` do `.env` para `sqlite:///./dev.db`.
+No PowerShell: `$env:NEXFI_ENV_FILE=".env.neon"; .venv\Scripts\alembic upgrade head; Remove-Item Env:NEXFI_ENV_FILE`
+
+O administrador de produção já existe no Neon. Novos usuários são criados pela tela
+**Admin → Usuários** do próprio app.
+
+> O seed de demonstração (`python -m app.seeds.seed`) se recusa a rodar fora de SQLite/localhost:
+> ele cria um ADMIN com senha pública e dados fictícios.
 
 ## 3. Projeto na Vercel
 
@@ -67,7 +76,7 @@ cd backend
 6. **Deploy**. Conferir:
    - `https://<projeto>.vercel.app/health` → `{"status":"ok"}`
    - `https://<projeto>.vercel.app/` → tela de login
-   - Login com o usuário criado no passo 2.
+   - Login com o administrador de produção (já criado no Neon).
 
 > Previews (branches/PRs) usam o mesmo banco se `DATABASE_URL` estiver em Preview. Para
 > isolar, dá para usar a integração Neon ↔ Vercel, que cria um branch do banco por preview.
