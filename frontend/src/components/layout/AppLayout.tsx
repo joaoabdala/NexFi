@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { Outlet, useLocation } from "react-router-dom"
+import { PageFallback } from "@/components/PageFallback"
 import { Sidebar, SidebarContent } from "./Sidebar"
 import { Topbar } from "./Topbar"
 
@@ -28,7 +29,10 @@ export function AppLayout() {
         <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
         <main className="flex-1 overflow-y-auto scrollbar-thin p-4 lg:p-6">
           <div key={location.pathname} className="animate-nexfi-page-in">
-            <Outlet />
+            {/* Suspense aqui mantém sidebar/topbar visíveis enquanto a página carrega */}
+            <Suspense fallback={<PageFallback />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>
