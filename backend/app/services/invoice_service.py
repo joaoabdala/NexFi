@@ -1,0 +1,166 @@
+import uuid
+from datetime import date
+from decimal import Decimal
+
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import NotFoundError, ValidationError
+from app.models.card import CreditCard, CreditCardInvoice
+from app.models.enums import InvoiceStatus, TransactionStatus, TransactionType
+from app.models.transaction import Transaction
+from app.repositories import card_repository
+from app.utils.dates import safe_day_in_month
+from app.utils.money import quantize, to_decimal
+
+
+def invoice_dates_for_competence(card: CreditCard, competence: date) -> tuple[date, date]:
+    closing_date = safe_day_in_month(competence.year, competence.month, card.closing_day)
+    if card.due_day >= card.closing_day:
+        due_date = safe_day_in_month(competence.year, competence.month, card.due_day)
+    else:
+        next_month = competence.month % 12 + 1
+        next_year = competence.year + (1 if competence.month == 12 else 0)
+        due_date = safe_day_in_month(next_year, next_month, card.due_day)
+    return closing_date, due_date
+
+
+def get_or_create_invoice(db: Session, card: CreditCard, competence: date) -> CreditCardInvoice:
+    invoice = card_repository.get_invoice_by_competence(db, card.id, competence)
+    if invoice:
+        return invoice
+    closing_date, due_date = invoice_dates_for_competence(card, competence)
+    invoice = CreditCardInvoice(
+        card_id=card.id,
+        competence=competence,
+        closing_date=closing_date,
+        due_date=due_date,
+        status=InvoiceStatus.ABERTA,
+    )
+    db.add(invoice)
+    db.flush()
+    return invoice
+
+
+def compute_invoice_amount(db: Session, invoice: CreditCardInvoice) -> Decimal:
+    installments = card_repository.list_installments_by_invoice(db, invoice.id)
+    return quantize(sum((to_decimal(i.amount) for i in installments), Decimal("0")))
+
+
+def refresh_invoice_status(invoice: CreditCardInvoice) -> CreditCardInvoice:
+    if invoice.status == InvoiceStatus.PAGA:
+        return invoice
+    today = date.today()
+    if today > invoice.due_date:
+        invoice.status = InvoiceStatus.VENCIDA
+    elif today >= invoice.closing_date:
+        invoice.status = InvoiceStatus.FECHADA
+    else:
+        invoice.status = InvoiceStatus.ABERTA
+    return invoice
+
+
+def to_invoice_dict(db: Session, invoice: CreditCardInvoice) -> dict:
+    installments = card_repository.list_installments_by_invoice(db, invoice.id)
+    installment_dicts = [
+        {
+            "id": i.id,
+            "purchase_id": i.purchase_id,
+            "invoice_id": i.invoice_id,
+            "number": i.number,
+            "amount": i.amount,
+            "description": i.purchase.description if i.purchase else None,
+            "installments_total": i.purchase.installments_total if i.purchase else None,
+        }
+        for i in installments
+    ]
+    return {
+        "id": invoice.id,
+        "card_id": invoice.card_id,
+        "competence": invoice.competence,
+        "closing_date": invoice.closing_date,
+        "due_date": invoice.due_date,
+        "status": invoice.status,
+        "amount": compute_invoice_amount(db, invoice),
+        "payment_date": invoice.payment_date,
+        "payment_account_id": invoice.payment_account_id,
+        "installments": installment_dicts,
+    }
+
+
+def list_invoices(
+    db: Session, user_id: uuid.UUID, card_id: uuid.UUID | None = None
+) -> list[CreditCardInvoice]:
+    invoices = card_repository.list_invoices_owned(db, user_id, card_id)
+    for invoice in invoices:
+        refresh_invoice_status(invoice)
+    db.commit()
+    return invoices
+
+
+def get_invoice_detail(db: Session, user_id: uuid.UUID, invoice_id: uuid.UUID) -> CreditCardInvoice:
+    invoice = card_repository.get_invoice_owned(db, user_id, invoice_id)
+    if not invoice:
+        raise NotFoundError("Fatura não encontrada.")
+    refresh_invoice_status(invoice)
+    db.commit()
+    return invoice
+
+
+def pay_invoice(
+    db: Session,
+    user_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    payment_date: date,
+    payment_account_id: uuid.UUID | None,
+) -> CreditCardInvoice:
+    invoice = card_repository.get_invoice_owned(db, user_id, invoice_id)
+    if not invoice:
+        raise NotFoundError("Fatura não encontrada.")
+    if invoice.status == InvoiceStatus.PAGA:
+        raise ValidationError("Esta fatura já foi paga.")
+    card = invoice.card
+
+    account_id = payment_account_id or card.default_payment_account_id
+    if payment_account_id:
+        from app.repositories import account_repository
+
+        account = account_repository.get_by_id(db, user_id, payment_account_id)
+        if not account:
+            raise ValidationError("Conta de pagamento inválida.")
+
+    amount = compute_invoice_amount(db, invoice)
+    if amount <= 0:
+        raise ValidationError("Fatura sem valor a pagar.")
+
+    try:
+        # Regra crítica: o pagamento da fatura NUNCA gera uma nova DESPESA — as despesas já
+        # foram registradas em cada CreditCardInstallment.transaction. Este lançamento é do
+        # tipo PAGAMENTO_FATURA, que apenas debita a conta e é excluído do somatório de
+        # despesas do período (ver dashboard_service).
+        payment_txn = Transaction(
+            user_id=user_id,
+            account_id=account_id,
+            category_id=None,
+            description=f"Pagamento fatura {card.name} — {invoice.competence.strftime('%m/%Y')}",
+            type=TransactionType.PAGAMENTO_FATURA,
+            amount=amount,
+            competence_date=invoice.competence,
+            payment_date=payment_date,
+            status=TransactionStatus.CONFIRMADA,
+            origin="PAGAMENTO_FATURA",
+            invoice_id=invoice.id,
+        )
+        db.add(payment_txn)
+        db.flush()
+
+        invoice.status = InvoiceStatus.PAGA
+        invoice.payment_date = payment_date
+        invoice.payment_account_id = account_id
+        invoice.payment_transaction_id = payment_txn.id
+        db.add(invoice)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(invoice)
+    return invoice
