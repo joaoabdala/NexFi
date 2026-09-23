@@ -86,7 +86,8 @@ def spa_fallback(full_path: str) -> FileResponse:
 
     candidate = (PUBLIC_DIR / full_path).resolve()
     if full_path and candidate.is_file() and PUBLIC_DIR in candidate.parents:
-        cache = IMMUTABLE if full_path.startswith("assets/") else "public, max-age=3600"
+        # Arquivos de nome fixo (favicon, og-image, manifest) mudam sem trocar de nome: cache curto.
+        cache = IMMUTABLE if full_path.startswith("assets/") else "public, max-age=300"
         return FileResponse(candidate, headers={"Cache-Control": cache, "CDN-Cache-Control": cache})
 
     # Arquivo inexistente (ex.: chunk antigo após um deploy) deve dar 404, não o index.html —

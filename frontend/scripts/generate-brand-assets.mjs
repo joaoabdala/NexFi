@@ -6,7 +6,9 @@
  *   node scripts/generate-brand-assets.mjs
  *
  * Os arquivos gerados em public/ são versionados; rode de novo só quando a logo mudar (e atualize
- * também src/components/BrandMark.tsx, que desenha a mesma arte no app).
+ * também src/components/BrandMark.tsx, que desenha a mesma arte no app). Depois de regerar,
+ * incremente o ?v= dos ícones em index.html — os nomes não mudam, e sem isso navegadores e a
+ * Cloudflare continuam mostrando o ícone antigo por um tempo.
  */
 import { writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
