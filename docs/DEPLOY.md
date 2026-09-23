@@ -60,6 +60,11 @@ O administrador de produção já existe no Neon. Novos usuários são criados p
 > O seed de demonstração (`python -m app.seeds.seed`) se recusa a rodar fora de SQLite/localhost:
 > ele cria um ADMIN com senha pública e dados fictícios.
 
+**Usuário demo em produção:** `demo@abdalanexus.com` / `demo123`, criado no Neon como **usuário
+comum** (sem acesso ao Admin), com os mesmos dados fictícios do banco local. Para recriar num banco
+novo: `NEXFI_ENV_FILE=.env.neon .venv/Scripts/python -m app.seeds.seed --demo-remoto` (se o usuário já
+existir, o seed não faz nada).
+
 ## 3. Projeto na Vercel
 
 1. **Add New → Project** → importar `joaoabdala/NexFi`.

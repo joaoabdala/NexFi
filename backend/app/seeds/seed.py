@@ -2,6 +2,15 @@
 transações, cartão, financiamento) para que o Dashboard já nasça com dados reais.
 
 Uso: python -m app.seeds.seed
+
+Produção (demo público, ex.: Neon): o seed normal se recusa a rodar fora do banco local. Para criar
+o usuário de demonstração num banco remoto, é preciso pedir explicitamente:
+
+    NEXFI_ENV_FILE=.env.neon python -m app.seeds.seed --demo-remoto
+
+Nesse modo o demo é criado como USUÁRIO COMUM (a senha é pública: como ADMIN, qualquer um poderia
+gerenciar usuários, inclusive o administrador real) e o schema não é tocado (create_all fica de
+fora; em produção quem cria as tabelas são as migrations).
 """
 
 import uuid
@@ -59,9 +68,13 @@ def ensure_local_database(url) -> None:
     )
 
 
-def run() -> None:
-    ensure_local_database(engine.url)
-    Base.metadata.create_all(bind=engine)
+def run(demo_remoto: bool = False) -> None:
+    if demo_remoto:
+        print(f"Modo demo remoto: banco '{engine.url.host}' — usuário demo será USUÁRIO COMUM.")
+    else:
+        ensure_local_database(engine.url)
+        Base.metadata.create_all(bind=engine)
+    demo_role = UserRole.USER if demo_remoto else UserRole.ADMIN
     db = SessionLocal()
     try:
         existing = db.query(User).filter(User.email == settings.SEED_ADMIN_EMAIL.lower()).first()
@@ -73,7 +86,7 @@ def run() -> None:
             email=settings.SEED_ADMIN_EMAIL.lower(),
             password_hash=hash_password(settings.SEED_ADMIN_PASSWORD),
             name=settings.SEED_ADMIN_NAME,
-            role=UserRole.ADMIN,
+            role=demo_role,
         )
         db.add(user)
         db.commit()
@@ -412,4 +425,6 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    import sys
+
+    run(demo_remoto="--demo-remoto" in sys.argv[1:])
