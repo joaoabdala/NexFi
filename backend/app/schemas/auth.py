@@ -1,6 +1,7 @@
 import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.enums import UserRole
 from app.schemas.common import ORMModel
@@ -37,5 +38,16 @@ class UserProfile(ORMModel):
 
 class UpdateProfileRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    timezone: str | None = None
-    locale: str | None = None
+    timezone: str | None = Field(default=None, max_length=64)
+    locale: str | None = Field(default=None, pattern=r"^[a-z]{2}(-[A-Z]{2})?$")
+
+    @field_validator("timezone")
+    @classmethod
+    def valid_timezone(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("Fuso horário inválido.") from exc
+        return value

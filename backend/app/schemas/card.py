@@ -64,6 +64,7 @@ class CreditCardInvoiceOut(ORMModel):
     due_date: date
     status: InvoiceStatus
     amount: Decimal = Decimal("0")
+    paid_amount: Decimal = Decimal("0")
     payment_date: date | None
     payment_account_id: uuid.UUID | None
     installments: list[CreditCardInstallmentOut] = []

@@ -13,6 +13,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories import auth_repository
+from app.services import login_throttle_service
 from app.schemas.auth import TokenResponse, UpdateProfileRequest
 
 
@@ -26,13 +27,16 @@ def _issue_tokens(db: Session, user: User) -> TokenResponse:
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
-def login(db: Session, email: str, password: str) -> TokenResponse:
+def login(db: Session, email: str, password: str, client_ip: str | None = None) -> TokenResponse:
+    login_throttle_service.ensure_not_locked(db, email, client_ip)
     user = auth_repository.get_user_by_email(db, email)
     # verify_password roda o bcrypt mesmo sem usuário: o tempo de resposta não revela se o
     # e-mail existe.
     password_ok = verify_password(password, user.password_hash if user else None)
     if not user or not user.is_active or not password_ok:
+        login_throttle_service.register_failure(db, email, client_ip)
         raise UnauthorizedError("E-mail ou senha inválidos.")
+    login_throttle_service.register_success(db, email)
     return _issue_tokens(db, user)
 
 
@@ -46,8 +50,9 @@ def refresh(db: Session, refresh_token: str) -> TokenResponse:
     user = db.get(User, record.user_id)
     if not user or not user.is_active:
         raise UnauthorizedError("Usuário inválido.")
-    # Rotaciona o refresh token: revoga o atual e emite um novo par.
-    auth_repository.revoke_refresh_token(db, record)
+    # Rotaciona o refresh token: revoga o atual (de forma atômica) e emite um novo par.
+    if not auth_repository.revoke_if_active(db, record):
+        raise UnauthorizedError("Refresh token inválido.")
     return _issue_tokens(db, user)
 
 

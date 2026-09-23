@@ -9,7 +9,7 @@ from app.models.enums import InvoiceStatus, TransactionStatus, TransactionType
 from app.models.transaction import Transaction
 from app.repositories import card_repository, category_repository
 from app.schemas.card import CreditCardPurchaseCreate
-from app.services.invoice_service import compute_invoice_amount, get_or_create_invoice
+from app.services.invoice_service import compute_invoice_amount, get_or_create_invoice, reopen_if_paid
 from app.utils.dates import add_months, invoice_competence_for_purchase
 from app.utils.money import split_installments, to_decimal
 
@@ -47,11 +47,9 @@ def create_purchase(
         for index, amount in enumerate(amounts, start=1):
             competence = add_months(first_competence, index - 1)
             invoice = get_or_create_invoice(db, card, competence)
-            if invoice.status == InvoiceStatus.PAGA:
-                raise ValidationError(
-                    f"A fatura de {competence.strftime('%m/%Y')} já foi paga; "
-                    "não é possível lançar uma parcela nela."
-                )
+            # Fatura já paga (ex.: paga antes do fechamento) volta a ter saldo a pagar, em vez de
+            # travar novas compras no período.
+            reopen_if_paid(invoice)
             suffix = f" ({index}/{payload.installments_total})" if payload.installments_total > 1 else ""
             description = f"{payload.description}{suffix}"
 

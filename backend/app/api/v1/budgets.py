@@ -50,8 +50,8 @@ def delete_budget(
 
 @router.get("/summary", response_model=list[BudgetSummaryItem])
 def get_summary(
-    year: int = Query(default_factory=lambda: local_today().year),
-    month: int = Query(default_factory=lambda: local_today().month),
+    year: int = Query(default_factory=lambda: local_today().year, ge=2000, le=2100),
+    month: int = Query(default_factory=lambda: local_today().month, ge=1, le=12),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

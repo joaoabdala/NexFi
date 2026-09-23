@@ -195,6 +195,7 @@ def pay_installment(
     installment = financing_repository.get_installment(db, commitment.id, installment_id)
     if not installment:
         raise NotFoundError("Parcela não encontrada.")
+    db.refresh(installment, with_for_update=True)  # clique duplo não paga duas vezes
     if installment.status != CommitmentInstallmentStatus.PENDENTE:
         raise ValidationError("Apenas parcelas pendentes podem ser pagas.")
     account = account_repository.get_by_id(db, user_id, payload.account_id)
@@ -261,6 +262,8 @@ def create_amortization(
         raise ValidationError("Não há parcelas pendentes para amortizar.")
 
     if payload.installment_numbers:
+        if len(set(payload.installment_numbers)) != len(payload.installment_numbers):
+            raise ValidationError("A mesma parcela foi informada mais de uma vez.")
         numbers = payload.installment_numbers
     elif payload.type == AmortizationType.REDUCAO_PARCELA:
         numbers = list(pending_by_number.keys())

@@ -1,9 +1,30 @@
 import uuid
 
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.security import hash_password
+from app.models import (
+    Account,
+    Amortization,
+    AmortizationInstallment,
+    BalanceAdjustment,
+    Budget,
+    Category,
+    CommitmentInstallment,
+    CreditCard,
+    CreditCardInstallment,
+    CreditCardInvoice,
+    CreditCardPurchase,
+    FinancialCommitment,
+    FinancialGoal,
+    FinancialInstitution,
+    RecurrenceRule,
+    RefreshToken,
+    Transaction,
+    Transfer,
+)
 from app.models.enums import UserRole
 from app.models.user import User
 from app.repositories import auth_repository, user_repository
@@ -89,7 +110,49 @@ def delete_user(db: Session, requesting_user: User, user_id: uuid.UUID) -> None:
         if remaining < 1:
             raise ValidationError("Não é possível excluir o último administrador ativo do sistema.")
 
-    # Exclusão em cascata: todas as instituições, contas, transações, cartões,
-    # financiamentos etc. do usuário são removidos junto (ON DELETE CASCADE no banco).
-    db.delete(user)
-    db.commit()
+    try:
+        _delete_user_data(db, user.id)
+        db.delete(user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _delete_user_data(db: Session, user_id: uuid.UUID) -> None:
+    """Apaga os dados financeiros do usuário em ordem de dependência.
+
+    As FKs entre tabelas do próprio usuário são RESTRICT (ex.: conta ← transferência, cartão ←
+    fatura), de propósito: o app nunca apaga histórico por acidente. Por isso o ON DELETE
+    CASCADE a partir de users não basta — o banco recusava excluir quem tivesse qualquer dado.
+    """
+    card_ids = select(CreditCard.id).where(CreditCard.user_id == user_id)
+    commitment_ids = select(FinancialCommitment.id).where(FinancialCommitment.user_id == user_id)
+    amortization_ids = select(Amortization.id).where(Amortization.user_id == user_id)
+    purchase_ids = select(CreditCardPurchase.id).where(CreditCardPurchase.user_id == user_id)
+    steps = [
+        delete(BalanceAdjustment).where(BalanceAdjustment.user_id == user_id),
+        delete(Transaction).where(Transaction.user_id == user_id),
+        delete(Transfer).where(Transfer.user_id == user_id),
+        delete(AmortizationInstallment).where(AmortizationInstallment.amortization_id.in_(amortization_ids)),
+        update(CommitmentInstallment)
+        .where(CommitmentInstallment.commitment_id.in_(commitment_ids))
+        .values(amortization_id=None),
+        delete(Amortization).where(Amortization.user_id == user_id),
+        delete(CommitmentInstallment).where(CommitmentInstallment.commitment_id.in_(commitment_ids)),
+        delete(FinancialCommitment).where(FinancialCommitment.user_id == user_id),
+        delete(CreditCardInstallment).where(CreditCardInstallment.purchase_id.in_(purchase_ids)),
+        delete(CreditCardPurchase).where(CreditCardPurchase.user_id == user_id),
+        delete(CreditCardInvoice).where(CreditCardInvoice.card_id.in_(card_ids)),
+        delete(CreditCard).where(CreditCard.user_id == user_id),
+        delete(RecurrenceRule).where(RecurrenceRule.user_id == user_id),
+        delete(Budget).where(Budget.user_id == user_id),
+        delete(FinancialGoal).where(FinancialGoal.user_id == user_id),
+        delete(Account).where(Account.user_id == user_id),
+        update(Category).where(Category.user_id == user_id).values(parent_id=None),
+        delete(Category).where(Category.user_id == user_id),
+        delete(FinancialInstitution).where(FinancialInstitution.user_id == user_id),
+        delete(RefreshToken).where(RefreshToken.user_id == user_id),
+    ]
+    for statement in steps:
+        db.execute(statement.execution_options(synchronize_session=False))

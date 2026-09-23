@@ -2,6 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
@@ -46,6 +47,25 @@ def compute_invoice_amount(db: Session, invoice: CreditCardInvoice) -> Decimal:
     return quantize(sum((to_decimal(i.amount) for i in installments), Decimal("0")))
 
 
+def compute_invoice_paid(db: Session, invoice: CreditCardInvoice) -> Decimal:
+    """Soma dos pagamentos confirmados da fatura. Uma fatura pode ter mais de um pagamento:
+    quando uma compra entra numa fatura já paga (paga antes do fechamento, por exemplo), ela
+    reabre e o próximo pagamento cobre só a diferença."""
+    stmt = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+        Transaction.invoice_id == invoice.id,
+        Transaction.type == TransactionType.PAGAMENTO_FATURA,
+        Transaction.status == TransactionStatus.CONFIRMADA,
+    )
+    return quantize(to_decimal(db.scalar(stmt)))
+
+
+def reopen_if_paid(invoice: CreditCardInvoice) -> None:
+    """Chamada quando entra uma compra nova: a fatura volta a ter saldo a pagar."""
+    if invoice.status == InvoiceStatus.PAGA:
+        invoice.status = InvoiceStatus.ABERTA
+        refresh_invoice_status(invoice)
+
+
 def refresh_invoice_status(invoice: CreditCardInvoice) -> CreditCardInvoice:
     if invoice.status == InvoiceStatus.PAGA:
         return invoice
@@ -81,6 +101,7 @@ def to_invoice_dict(db: Session, invoice: CreditCardInvoice) -> dict:
         "due_date": invoice.due_date,
         "status": invoice.status,
         "amount": compute_invoice_amount(db, invoice),
+        "paid_amount": compute_invoice_paid(db, invoice),
         "payment_date": invoice.payment_date,
         "payment_account_id": invoice.payment_account_id,
         "installments": installment_dicts,
@@ -116,6 +137,8 @@ def pay_invoice(
     invoice = card_repository.get_invoice_owned(db, user_id, invoice_id)
     if not invoice:
         raise NotFoundError("Fatura não encontrada.")
+    # Trava a linha da fatura (Postgres) até o commit: um clique duplo não gera dois pagamentos.
+    db.refresh(invoice, with_for_update=True)
     if invoice.status == InvoiceStatus.PAGA:
         raise ValidationError("Esta fatura já foi paga.")
     card = invoice.card
@@ -128,7 +151,7 @@ def pay_invoice(
         if not account:
             raise ValidationError("Conta de pagamento inválida.")
 
-    amount = compute_invoice_amount(db, invoice)
+    amount = quantize(compute_invoice_amount(db, invoice) - compute_invoice_paid(db, invoice))
     if amount <= 0:
         raise ValidationError("Fatura sem valor a pagar.")
 

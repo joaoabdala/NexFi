@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -18,12 +18,21 @@ from app.services import auth_service
 router = APIRouter()
 
 
+def _client_ip(request: Request) -> str | None:
+    # Na Vercel o IP real do cliente vem em x-forwarded-for (preenchido pela própria plataforma).
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or None
+    return request.client.host if request.client else None
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    return auth_service.login(db, form_data.username, form_data.password)
+    return auth_service.login(db, form_data.username, form_data.password, _client_ip(request))
 
 
 @router.post("/refresh", response_model=TokenResponse)

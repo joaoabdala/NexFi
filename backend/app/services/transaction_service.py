@@ -65,6 +65,9 @@ def create_transaction(db: Session, user_id: uuid.UUID, payload: TransactionCrea
     return txn
 
 
+REQUIRED_ON_UPDATE = ("account_id", "amount", "description", "competence_date")
+
+
 def update_transaction(
     db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID, payload: TransactionUpdate
 ) -> Transaction:
@@ -74,6 +77,11 @@ def update_transaction(
             "Esta transação foi gerada automaticamente e não pode ser editada diretamente."
         )
     data = payload.model_dump(exclude_unset=True)
+    # {"account_id": null} tirava a transação de qualquer saldo (mas ela seguia contando como
+    # despesa); {"amount": null} estourava IntegrityError (500).
+    cleared = [f for f in REQUIRED_ON_UPDATE if f in data and data[f] is None]
+    if cleared:
+        raise ValidationError(f"Campo obrigatório não pode ficar vazio: {', '.join(cleared)}.")
     if "account_id" in data and data["account_id"] is not None:
         _validate_account(db, user_id, data["account_id"])
     if "category_id" in data and data["category_id"] is not None:

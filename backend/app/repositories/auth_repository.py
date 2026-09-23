@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.refresh_token import RefreshToken
@@ -20,6 +20,19 @@ def store_refresh_token(db: Session, user_id, token_hash: str, expires_at: datet
     db.add(record)
     db.flush()
     return record
+
+
+def revoke_if_active(db: Session, record: RefreshToken) -> bool:
+    """Revoga só se ainda estiver ativo, num UPDATE condicional. Retorna False se outra
+    requisição revogou antes (refresh concorrente/replay) — apenas uma pode rotacionar."""
+    result = db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id == record.id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(timezone.utc))
+        .execution_options(synchronize_session=False)
+    )
+    db.expire(record)
+    return result.rowcount == 1
 
 
 def revoke_refresh_token(db: Session, record: RefreshToken) -> None:

@@ -11,6 +11,7 @@ from app.models.financing import (
 )
 from app.models.goal import FinancialGoal
 from app.models.institution import FinancialInstitution
+from app.models.login_throttle import LoginThrottle
 from app.models.recurrence import RecurrenceRule
 from app.models.refresh_token import RefreshToken
 from app.models.transaction import Transaction
@@ -32,6 +33,7 @@ __all__ = [
     "FinancialCommitment",
     "FinancialGoal",
     "FinancialInstitution",
+    "LoginThrottle",
     "RecurrenceRule",
     "RefreshToken",
     "Transaction",

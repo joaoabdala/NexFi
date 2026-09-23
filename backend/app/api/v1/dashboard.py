@@ -21,7 +21,7 @@ def get_dashboard(
 
 @router.get("/projection", response_model=ProjectionOut)
 def get_projection(
-    horizon_days: int = Query(default=30),
+    horizon_days: int = Query(default=30, ge=1, le=730),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

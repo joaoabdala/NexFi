@@ -26,3 +26,7 @@ class UnauthorizedError(NexFiError):
 
 class ForbiddenError(NexFiError):
     status_code = 403
+
+
+class TooManyRequestsError(NexFiError):
+    status_code = 429
