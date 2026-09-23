@@ -2,21 +2,58 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="NexFi — Personal Finance by Abdala Nexus" />
+    <title>NexFi - Finanças pessoais</title>
+    <meta
+      name="description"
+      content="Contas, cartões, financiamentos e metas em um só lugar, com projeção de saldo e das faturas mês a mês."
+    />
+
+    <!-- Ícones (gerados por scripts/generate-brand-assets.mjs) -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#0B0F19" />
+    <!-- iOS: nome e barra de status quando adicionado à tela de início -->
+    <meta name="apple-mobile-web-app-title" content="NexFi" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+    <!-- Prévia de link (WhatsApp, Telegram, LinkedIn, X…). A imagem precisa de URL absoluta. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NexFi" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://nexfi.abdalanexus.com/" />
+    <meta property="og:title" content="NexFi - Finanças pessoais" />
+    <meta
+      property="og:description"
+      content="Contas, cartões, financiamentos e metas em um só lugar, com projeção de saldo e das faturas mês a mês."
+    />
+    <meta property="og:image" content="https://nexfi.abdalanexus.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Logo do NexFi com o texto Finanças pessoais" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="NexFi - Finanças pessoais" />
+    <meta
+      name="twitter:description"
+      content="Contas, cartões, financiamentos e metas em um só lugar, com projeção de saldo e das faturas mês a mês."
+    />
+    <meta name="twitter:image" content="https://nexfi.abdalanexus.com/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>NexFi — Personal Finance</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

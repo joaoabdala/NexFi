@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { navSections } from "./nav-config"
+import { BrandMark } from "@/components/BrandMark"
 
 function visibleFor(items: typeof navSections, isAdmin: boolean): typeof navSections {
   return items
@@ -13,19 +14,7 @@ function visibleFor(items: typeof navSections, isAdmin: boolean): typeof navSect
 function Logo() {
   return (
     <div className="flex items-center gap-2 px-2">
-      <svg viewBox="0 0 64 64" className="h-8 w-8 shrink-0">
-        <defs>
-          <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#14BBA6" />
-            <stop offset="1" stopColor="#5EEEA4" />
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="14" fill="#0B0F19" />
-        <path
-          d="M16 46 L27 18 L32 18 L24 40 L40 40 L48 18 L48 46 L43 46 L43 26 L36 46 L30 46 L38 24 L32 40 L23 40 Z"
-          fill="url(#logo-g)"
-        />
-      </svg>
+      <BrandMark className="h-8 w-8 shrink-0" />
       <div className="leading-tight">
         <p className="font-heading text-base font-semibold">NexFi</p>
         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Abdala Nexus</p>

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { LoginVisual } from "@/components/LoginVisual"
 import { useAuth } from "@/contexts/AuthContext"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { BrandMark } from "@/components/BrandMark"
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -51,19 +52,7 @@ export function LoginPage() {
       <div className="flex items-center justify-center bg-background px-4 py-12">
         <div className="animate-nexfi-fade-in-up w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-            <svg viewBox="0 0 64 64" className="h-12 w-12">
-              <defs>
-                <linearGradient id="login-g" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#14BBA6" />
-                  <stop offset="1" stopColor="#5EEEA4" />
-                </linearGradient>
-              </defs>
-              <rect width="64" height="64" rx="14" fill="#0B0F19" />
-              <path
-                d="M16 46 L27 18 L32 18 L24 40 L40 40 L48 18 L48 46 L43 46 L43 26 L36 46 L30 46 L38 24 L32 40 L23 40 Z"
-                fill="url(#login-g)"
-              />
-            </svg>
+            <BrandMark className="h-12 w-12" />
           </div>
 
           <div className="mb-8">

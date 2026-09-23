@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/BrandMark"
 const GRID_COLS = 14
 const GRID_ROWS = 18
 const GLOW_COLORS = ["rgba(20,187,166,", "rgba(94,238,164,"]
@@ -142,19 +143,7 @@ export function LoginVisual() {
       {/* Content */}
       <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
         <div className="flex items-center gap-2.5">
-          <svg viewBox="0 0 64 64" className="h-9 w-9 shrink-0">
-            <defs>
-              <linearGradient id="visual-logo-g" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#14BBA6" />
-                <stop offset="1" stopColor="#5EEEA4" />
-              </linearGradient>
-            </defs>
-            <rect width="64" height="64" rx="14" fill="#0B0F19" />
-            <path
-              d="M16 46 L27 18 L32 18 L24 40 L40 40 L48 18 L48 46 L43 46 L43 26 L36 46 L30 46 L38 24 L32 40 L23 40 Z"
-              fill="url(#visual-logo-g)"
-            />
-          </svg>
+          <BrandMark className="h-9 w-9 shrink-0" />
           <span className="font-heading text-lg font-semibold text-white">NexFi</span>
         </div>
 

@@ -1,3 +1,4 @@
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -62,6 +63,8 @@ def health() -> dict[str, str]:
 # Localmente, sem build em public/, só responde 404 (o frontend roda no Vite).
 # Precisa ser a última rota registrada, para não sombrear a API.
 PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
+# O Linux da Vercel não conhece a extensão do manifest do PWA (sairia application/octet-stream).
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 # Arquivos em /assets têm hash do conteúdo no nome: podem ficar em cache "para sempre".
 # s-maxage/CDN-Cache-Control deixam a Vercel e a Cloudflare guardarem também.
