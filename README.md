@@ -6,7 +6,7 @@ para multiusuário/SaaS (toda tabela relevante já possui `user_id`).
 
 Documentação complementar:
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — plano, decisões técnicas, ordem de implementação
-- [`docs/DEPLOY.md`](docs/DEPLOY.md) — deploy em produção: Vercel (frontend + API) e Neon (Postgres)
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — deploy em produção: projeto único na Vercel (frontend + API) e Neon (Postgres)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitetura, entidades, regras de negócio
 - [`docs/DATABASE.md`](docs/DATABASE.md) — modelo de dados
 

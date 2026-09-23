@@ -28,3 +28,6 @@ frontend/.env
 
 # Claude Code (local)
 .claude/settings.local.json
+
+# Build do frontend copiado para o backend no deploy (ver backend/vercel.json)
+backend/public/
