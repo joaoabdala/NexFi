@@ -61,3 +61,16 @@ def test_head_request_on_react_route_is_accepted(client):
     """Previews de link e monitores de uptime usam HEAD — antes dava 405."""
     response = client.head("/transacoes")
     assert response.status_code == 200
+
+
+def test_assets_are_cached_forever_but_404s_never(client):
+    """1º deploy: o 404 de um asset saiu com cache de 1 ano, a Cloudflare guardou e a tela ficou
+    preta mesmo depois da correção. Erro nunca pode ser cacheado."""
+    ok = client.get("/assets/index-abc.js")
+    assert "immutable" in ok.headers["cache-control"]
+    assert "s-maxage" in ok.headers["cdn-cache-control"]
+
+    missing = client.get("/assets/index-antigo.js")
+    assert missing.status_code == 404
+    assert missing.headers["cache-control"] == "no-store"
+    assert client.get("/api/v1/nao-existe").headers["cache-control"] == "no-store"

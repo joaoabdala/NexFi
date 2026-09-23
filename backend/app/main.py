@@ -54,30 +54,44 @@ def health() -> dict[str, str]:
 
 
 # --- Frontend (SPA) -------------------------------------------------------------------------
-# Em produção o build do frontend é copiado para backend/public/ (ver vercel.json). Na Vercel,
-# arquivos existentes em public/ saem direto do CDN e nem chegam aqui; esta rota cobre o resto:
-# rotas do React Router acessadas diretamente (ex.: F5 em /transacoes) recebem o index.html.
+# Em produção o build do frontend é copiado para backend/public/ (ver vercel.json) e entra no
+# pacote da função. Esta rota serve os arquivos de public/ (JS/CSS/ícones) e, para rotas do React
+# Router acessadas diretamente (ex.: F5 em /transacoes), devolve o index.html.
+# (A Vercel NÃO promove ao CDN um public/ gerado durante o build — confirmado no 1º deploy, quando
+# os /assets davam 404 e a tela ficava preta. Na frente há a Cloudflare, que cacheia os assets.)
 # Localmente, sem build em public/, só responde 404 (o frontend roda no Vite).
 # Precisa ser a última rota registrada, para não sombrear a API.
 PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
+
+# Arquivos em /assets têm hash do conteúdo no nome: podem ficar em cache "para sempre".
+# s-maxage/CDN-Cache-Control deixam a Vercel e a Cloudflare guardarem também.
+IMMUTABLE = "public, max-age=31536000, s-maxage=31536000, immutable"
+# Respostas de erro nunca podem ir para cache — um 404 cacheado de um asset deixa o app fora do ar
+# até alguém limpar o cache da Cloudflare.
+NO_STORE = {"Cache-Control": "no-store"}
+
+
+def _not_found(detail: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=detail, headers=NO_STORE)
 
 
 # GET e HEAD: previews de link e monitores de uptime costumam checar a página com HEAD.
 @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 def spa_fallback(full_path: str) -> FileResponse:
     if full_path == "api" or full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Recurso não encontrado.")
+        raise _not_found("Recurso não encontrado.")
 
     candidate = (PUBLIC_DIR / full_path).resolve()
     if full_path and candidate.is_file() and PUBLIC_DIR in candidate.parents:
-        return FileResponse(candidate)  # só acontece localmente; na Vercel o CDN serve antes
+        cache = IMMUTABLE if full_path.startswith("assets/") else "public, max-age=3600"
+        return FileResponse(candidate, headers={"Cache-Control": cache, "CDN-Cache-Control": cache})
 
     # Arquivo inexistente (ex.: chunk antigo após um deploy) deve dar 404, não o index.html —
     # senão o navegador tentaria executar HTML como JavaScript.
     if "." in full_path.rsplit("/", 1)[-1]:
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
+        raise _not_found("Arquivo não encontrado.")
 
     index = PUBLIC_DIR / "index.html"
     if not index.is_file():
-        raise HTTPException(status_code=404, detail="Frontend não publicado neste ambiente.")
+        raise _not_found("Frontend não publicado neste ambiente.")
     return FileResponse(index, headers={"Cache-Control": "no-cache"})
