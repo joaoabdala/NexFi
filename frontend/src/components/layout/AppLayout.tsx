@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PageFallback } from "@/components/PageFallback"
 import { Sidebar, SidebarContent } from "./Sidebar"
 import { Topbar } from "./Topbar"
+import { AppFooter } from "@/components/AppFooter"
 
 export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -28,8 +29,8 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
-        <main className="flex-1 overflow-y-auto scrollbar-thin p-4 lg:p-6">
-          <div key={location.pathname} className="animate-nexfi-page-in">
+        <main className="flex flex-1 flex-col overflow-y-auto scrollbar-thin">
+          <div key={location.pathname} className="animate-nexfi-page-in flex-1 p-4 lg:p-6">
             {/* Suspense aqui mantém sidebar/topbar visíveis enquanto a página carrega */}
             {/* Boundary por página: um erro numa tela não derruba sidebar/topbar; como o div pai
                 tem key=pathname, navegar para outra rota reseta o erro. */}
@@ -39,6 +40,7 @@ export function AppLayout() {
               </Suspense>
             </ErrorBoundary>
           </div>
+          <AppFooter className="mt-8" />
         </main>
       </div>
     </div>

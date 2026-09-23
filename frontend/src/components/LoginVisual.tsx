@@ -159,7 +159,8 @@ export function LoginVisual() {
           </p>
         </div>
 
-        <p className="text-xs text-white/35">© {new Date().getFullYear()} Abdala Nexus</p>
+        {/* Espaçador: o crédito "© Abdala Nexus" agora fica no AppFooter, na largura toda. */}
+        <div />
       </div>
     </div>
   )

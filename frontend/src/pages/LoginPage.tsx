@@ -11,6 +11,7 @@ import { LoginVisual } from "@/components/LoginVisual"
 import { useAuth } from "@/contexts/AuthContext"
 import { getApiErrorMessage } from "@/lib/api-error"
 import { BrandMark } from "@/components/BrandMark"
+import { AppFooter } from "@/components/AppFooter"
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -46,65 +47,68 @@ export function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <LoginVisual />
+    <div className="flex min-h-screen flex-col">
+      <div className="grid flex-1 lg:grid-cols-2">
+        <LoginVisual />
 
-      <div className="flex items-center justify-center bg-background px-4 py-12">
-        <div className="animate-nexfi-fade-in-up w-full max-w-sm">
-          <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-            <BrandMark className="h-12 w-12" />
-          </div>
-
-          <div className="mb-8">
-            <h1 className="font-heading text-2xl font-semibold">Bem-vindo de volta</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Entre com sua conta para acessar o NexFi.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="voce@exemplo.com"
-                  className="pl-9"
-                  {...register("email")}
-                />
-              </div>
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-9"
-                  {...register("password")}
-                />
-              </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+        <div className="flex items-center justify-center bg-background px-4 py-12">
+          <div className="animate-nexfi-fade-in-up w-full max-w-sm">
+            <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
+              <BrandMark className="h-12 w-12" />
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {error}
-              </div>
-            )}
+            <div className="mb-8">
+              <h1 className="font-heading text-2xl font-semibold">Bem-vindo de volta</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Entre com sua conta para acessar o NexFi.
+              </p>
+            </div>
 
-            <Button type="submit" disabled={isSubmitting} className="mt-2 h-11">
-              {isSubmitting ? "Entrando…" : "Entrar"}
-            </Button>
-          </form>
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="email">E-mail</Label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="voce@exemplo.com"
+                    className="pl-9"
+                    {...register("email")}
+                  />
+                </div>
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-9"
+                    {...register("password")}
+                  />
+                </div>
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" disabled={isSubmitting} className="mt-2 h-11">
+                {isSubmitting ? "Entrando…" : "Entrar"}
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
+      <AppFooter />
     </div>
   )
 }
