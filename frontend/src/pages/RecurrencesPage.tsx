@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toaster"
 import { formatCurrency } from "@/lib/format"
 import type { RecurrenceRule } from "@/types"
+import { invalidateFinancialData } from "@/lib/invalidate"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const FREQUENCY_LABEL: Record<string, string> = {
   SEMANAL: "Semanal",
@@ -29,16 +31,16 @@ export function RecurrencesPage() {
   const removeMutation = useMutation({
     mutationFn: recurrencesApi.remove,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recurrences"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Recorrência inativada.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   const generateMutation = useMutation({
     mutationFn: recurrencesApi.generate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recurrences"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Transações futuras geradas.", variant: "success" })
     },
   })
@@ -99,7 +101,7 @@ export function RecurrencesPage() {
                       </button>
                       {rule.active && (
                         <button
-                          onClick={() => removeMutation.mutate(rule.id)}
+                          onClick={() => window.confirm(`Excluir a recorrência "${rule.description}"? Os lançamentos futuros pendentes dela serão cancelados.`) && removeMutation.mutate(rule.id)}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />

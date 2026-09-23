@@ -152,6 +152,8 @@ export interface CreditCardInvoice {
   due_date: string
   status: InvoiceStatus
   amount: string
+  /** Soma dos pagamentos já feitos (uma fatura reaberta por compra nova pode ter mais de um). */
+  paid_amount: string
   payment_date: string | null
   payment_account_id: UUID | null
   installments: CreditCardInstallment[]

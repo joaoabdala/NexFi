@@ -88,7 +88,9 @@ export function CardFormDialog({
               control={control}
               name="institution_id"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                // A API não permite trocar a instituição de um cartão existente (o campo era
+                // ignorado e a tela dizia "salvo"): bloqueado na edição.
+                <Select value={field.value} onValueChange={field.onChange} disabled={!!card}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -148,7 +150,7 @@ export function CardFormDialog({
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

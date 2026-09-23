@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { formatCurrency, todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z.object({
   date: z.string().min(1),
@@ -84,11 +85,7 @@ export function AmortizationFormDialog({
     mutationFn: (values: FormValues) =>
       amortizationsApi.create(commitmentId!, { ...values, type: "REDUCAO_PRAZO" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financing"] })
-      queryClient.invalidateQueries({ queryKey: ["financing-installments"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Amortização registrada.", variant: "success" })
       onOpenChange(false)
     },
@@ -132,7 +129,7 @@ export function AmortizationFormDialog({
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

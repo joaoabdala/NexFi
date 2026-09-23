@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { formatCurrency } from "@/lib/format"
 import type { Account } from "@/types"
+import { invalidateFinancialData } from "@/lib/invalidate"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const TYPE_LABELS: Record<string, string> = {
   CONTA_CORRENTE: "Conta corrente",
@@ -35,10 +37,10 @@ export function AccountsPage() {
   const deactivateMutation = useMutation({
     mutationFn: accountsApi.deactivate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Conta inativada.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   const total = data?.reduce((sum, a) => sum + Number(a.current_balance), 0) ?? 0
@@ -108,7 +110,7 @@ export function AccountsPage() {
                   </button>
                   {account.active && (
                     <button
-                      onClick={() => deactivateMutation.mutate(account.id)}
+                      onClick={() => window.confirm(`Inativar a conta "${account.name}"? Ela deixa de aparecer nos formulários e no saldo.`) && deactivateMutation.mutate(account.id)}
                       className="flex items-center gap-1 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Inativar

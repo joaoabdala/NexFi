@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LoginVisual } from "@/components/LoginVisual"
 import { useAuth } from "@/contexts/AuthContext"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -36,8 +37,10 @@ export function LoginPage() {
     try {
       await login(values.email, values.password)
       navigate("/", { replace: true })
-    } catch {
-      setError("E-mail ou senha inválidos.")
+    } catch (err) {
+      // 401 traz "E-mail ou senha inválidos." da API; 429 traz o aviso de bloqueio; sem resposta,
+      // avisa que o servidor está inacessível — antes tudo virava "senha inválida".
+      setError(getApiErrorMessage(err, "Não foi possível entrar. Tente novamente."))
     }
   }
 

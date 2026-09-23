@@ -17,10 +17,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/format"
+import { LoadError } from "@/components/LoadError"
 
 export function YieldsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["dashboard", "12m"],
     queryFn: () => dashboardApi.get("12m"),
   })
@@ -39,7 +40,9 @@ export function YieldsPage() {
         </Button>
       </div>
 
-      {isLoading || !data ? (
+      {isError ? (
+        <LoadError onRetry={() => void refetch()} message="Não foi possível carregar os rendimentos." />
+      ) : isLoading || !data ? (
         <Skeleton className="h-48 w-full" />
       ) : (
         <>

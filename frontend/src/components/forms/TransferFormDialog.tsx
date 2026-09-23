@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
+import { useEffect } from "react"
 import { transfersApi } from "@/api/transfers"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -12,6 +13,7 @@ import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z
   .object({
@@ -44,12 +46,16 @@ export function TransferFormDialog({ open, onOpenChange }: { open: boolean; onOp
     defaultValues: { date: todayISO() },
   })
 
+  // Reseta ao abrir: sem isso, valores digitados e cancelados reapareciam na próxima abertura
+  // (ex.: o saldo informado para a conta A aparecendo no ajuste da conta B).
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
+
   const mutation = useMutation({
     mutationFn: transfersApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Transferência realizada.", variant: "success" })
       reset()
       onOpenChange(false)
@@ -78,7 +84,7 @@ export function TransferFormDialog({ open, onOpenChange }: { open: boolean; onOp
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>
@@ -101,7 +107,7 @@ export function TransferFormDialog({ open, onOpenChange }: { open: boolean; onOp
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

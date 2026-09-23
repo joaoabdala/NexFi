@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
+import { useEffect } from "react"
 import { budgetsApi } from "@/api/planning"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -12,13 +13,14 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useCategories } from "@/hooks/useReferenceData"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { optionalNumber } from "@/lib/zod-helpers"
 
 const schema = z.object({
   category_id: z.string().min(1, "Selecione a categoria."),
   amount: z.coerce.number().positive("Informe um valor válido."),
   specific_month: z.boolean(),
-  month: z.coerce.number().min(1).max(12).optional(),
-  year: z.coerce.number().min(2000).max(2100).optional(),
+  month: optionalNumber(z.coerce.number().min(1).max(12)),
+  year: optionalNumber(z.coerce.number().min(2000).max(2100)),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -44,6 +46,12 @@ export function BudgetFormDialog({ open, onOpenChange }: { open: boolean; onOpen
       year: new Date().getFullYear(),
     },
   })
+
+  // Reseta ao abrir: sem isso, valores digitados e cancelados reapareciam na próxima abertura
+  // (ex.: o saldo informado para a conta A aparecendo no ajuste da conta B).
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
 
   const specificMonth = watch("specific_month")
 

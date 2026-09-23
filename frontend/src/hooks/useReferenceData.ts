@@ -22,11 +22,21 @@ export interface FlatCategoryOption {
   kind: Category["kind"]
 }
 
-export function flattenCategories(categories: Category[]): FlatCategoryOption[] {
+/**
+ * Lista plana de categorias para selects. Por padrão só as ATIVAS — a API recusa lançamento em
+ * categoria desativada, então oferecê-la no formulário só gerava erro. Filtros de listagem
+ * (ex.: página de transações) passam `includeInactive` para achar lançamentos antigos.
+ */
+export function flattenCategories(
+  categories: Category[],
+  { includeInactive = false }: { includeInactive?: boolean } = {},
+): FlatCategoryOption[] {
   const result: FlatCategoryOption[] = []
   for (const parent of categories) {
+    if (!includeInactive && !parent.active) continue
     result.push({ id: parent.id, label: parent.name, kind: parent.kind })
     for (const child of parent.children ?? []) {
+      if (!includeInactive && !child.active) continue
       result.push({ id: child.id, label: `${parent.name} › ${child.name}`, kind: child.kind })
     }
   }

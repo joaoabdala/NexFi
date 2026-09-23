@@ -16,6 +16,7 @@ import { useInstitutions } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import type { Account, AccountType } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "CONTA_CORRENTE", label: "Conta corrente" },
@@ -82,8 +83,7 @@ export function AccountFormDialog({
         ? accountsApi.update(account.id, values)
         : accountsApi.create(values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Conta salva.", variant: "success" })
       onOpenChange(false)
     },

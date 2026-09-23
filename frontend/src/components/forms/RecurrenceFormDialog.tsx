@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
+import { optionalNumber } from "@/lib/zod-helpers"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -20,8 +22,8 @@ const schema = z.object({
   account_id: z.string().min(1, "Selecione a conta."),
   category_id: z.string().optional(),
   frequency: z.enum(["SEMANAL", "MENSAL", "ANUAL", "PERSONALIZADA"]),
-  reference_day: z.coerce.number().min(1).max(31).optional(),
-  custom_interval_days: z.coerce.number().min(1).optional(),
+  reference_day: optionalNumber(z.coerce.number().min(1).max(31)),
+  custom_interval_days: optionalNumber(z.coerce.number().min(1)),
   start_date: z.string().min(1),
   end_date: z.string().optional(),
 })
@@ -53,8 +55,7 @@ export function RecurrenceFormDialog({ open, onOpenChange }: { open: boolean; on
     mutationFn: (values: FormValues) =>
       recurrencesApi.create({ ...values, category_id: values.category_id || null, end_date: values.end_date || null }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recurrences"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Recorrência criada.", variant: "success" })
       reset()
       onOpenChange(false)
@@ -112,7 +113,7 @@ export function RecurrenceFormDialog({ open, onOpenChange }: { open: boolean; on
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

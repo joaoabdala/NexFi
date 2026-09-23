@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/toaster"
 import { useInstitutions } from "@/hooks/useReferenceData"
 import type { Institution } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 export function InstitutionsPage() {
   const { data, isLoading } = useInstitutions()
@@ -24,6 +25,7 @@ export function InstitutionsPage() {
       queryClient.invalidateQueries({ queryKey: ["institutions"] })
       notify({ title: "Instituição inativada.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   return (
@@ -81,7 +83,7 @@ export function InstitutionsPage() {
                       </button>
                       {inst.active && (
                         <button
-                          onClick={() => deactivateMutation.mutate(inst.id)}
+                          onClick={() => window.confirm(`Inativar a instituição "${inst.name}"?`) && deactivateMutation.mutate(inst.id)}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />

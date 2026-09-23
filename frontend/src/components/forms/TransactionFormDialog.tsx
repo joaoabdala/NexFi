@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z.object({
   type: z.enum(["RECEITA", "DESPESA", "RENDIMENTO"]),
@@ -52,6 +53,7 @@ export function TransactionFormDialog({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -79,6 +81,13 @@ export function TransactionFormDialog({
   const categoryOptions = flatCategories.filter(
     (c) => c.kind === "AMBOS" || c.kind === (type === "DESPESA" ? "DESPESA" : "RECEITA"),
   )
+  // Ao trocar despesa ↔ receita, a categoria escolhida antes pode não servir mais; mantê-la
+  // selecionada (e escondida da lista) fazia a API recusar o envio.
+  const categoryId = watch("category_id")
+  useEffect(() => {
+    if (categoryId && !categoryOptions.some((c) => c.id === categoryId)) setValue("category_id", "")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type])
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
@@ -87,8 +96,7 @@ export function TransactionFormDialog({
         payment_date: values.status === "CONFIRMADA" ? values.payment_date || todayISO() : null,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Movimentação registrada.", variant: "success" })
       reset()
       onOpenChange(false)
@@ -146,7 +154,7 @@ export function TransactionFormDialog({
                     <SelectValue placeholder="Selecione a conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

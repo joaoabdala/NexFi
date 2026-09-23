@@ -11,6 +11,7 @@ import { useAccounts } from "@/hooks/useReferenceData"
 import { formatCurrency, formatDate, todayISO } from "@/lib/format"
 import type { CommitmentInstallmentStatus } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const STATUS_VARIANT: Record<CommitmentInstallmentStatus, "success" | "warning" | "destructive" | "secondary"> = {
   PENDENTE: "secondary",
@@ -48,11 +49,7 @@ export function CommitmentDetailDialog({
         paid_amount: paidAmount,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financing-installments"] })
-      queryClient.invalidateQueries({ queryKey: ["financing"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Parcela paga.", variant: "success" })
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível registrar o pagamento."), variant: "error" }),
@@ -74,7 +71,7 @@ export function CommitmentDetailDialog({
                   <SelectValue placeholder="Selecione a conta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts?.map((a) => (
+                  {accounts?.filter((a) => a.active).map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.institution_name} — {a.name}
                     </SelectItem>

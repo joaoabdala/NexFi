@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
+import { useEffect } from "react"
 import { financingApi } from "@/api/financing"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -13,13 +14,15 @@ import { useToast } from "@/components/ui/toaster"
 import { useInstitutions } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
+import { optionalNumber } from "@/lib/zod-helpers"
 
 const schema = z.object({
   institution_id: z.string().min(1, "Selecione a instituição."),
   type: z.enum(["FINANCIAMENTO", "EMPRESTIMO", "CONSORCIO", "OUTROS"]),
   name: z.string().min(1, "Informe o nome."),
-  asset_value: z.coerce.number().optional(),
-  down_payment: z.coerce.number().optional(),
+  asset_value: optionalNumber(z.coerce.number()),
+  down_payment: optionalNumber(z.coerce.number()),
   financed_amount: z.coerce.number().positive("Informe o valor financiado."),
   installments_total: z.coerce.number().min(1).max(600),
   default_installment_amount: z.coerce.number().positive("Informe o valor da parcela."),
@@ -46,11 +49,16 @@ export function CommitmentFormDialog({ open, onOpenChange }: { open: boolean; on
     defaultValues: { type: "FINANCIAMENTO", start_date: todayISO() },
   })
 
+  // Reseta ao abrir: sem isso, valores digitados e cancelados reapareciam na próxima abertura
+  // (ex.: o saldo informado para a conta A aparecendo no ajuste da conta B).
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
+
   const mutation = useMutation({
     mutationFn: financingApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["financing"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Financiamento cadastrado.", variant: "success" })
       reset()
       onOpenChange(false)

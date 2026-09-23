@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/toaster"
 import { formatCurrency, formatDate, formatPercent } from "@/lib/format"
 import type { FinancialGoal } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 export function GoalsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["goals"], queryFn: goalsApi.list })
@@ -23,6 +24,7 @@ export function GoalsPage() {
       queryClient.invalidateQueries({ queryKey: ["goals"] })
       notify({ title: "Meta removida.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   return (
@@ -80,7 +82,7 @@ export function GoalsPage() {
                       <Pencil className="h-3.5 w-3.5" /> Editar
                     </button>
                     <button
-                      onClick={() => removeMutation.mutate(goal.id)}
+                      onClick={() => window.confirm(`Remover a meta "${goal.name}"?`) && removeMutation.mutate(goal.id)}
                       className="flex items-center gap-1 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Remover

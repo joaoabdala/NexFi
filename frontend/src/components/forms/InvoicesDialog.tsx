@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toaster"
 import { formatCurrency, formatDate, todayISO } from "@/lib/format"
 import type { CreditCardInvoice, InvoiceStatus } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const STATUS_VARIANT: Record<InvoiceStatus, "success" | "warning" | "destructive" | "secondary"> = {
   ABERTA: "secondary",
@@ -38,11 +39,7 @@ export function InvoicesDialog({
   const payMutation = useMutation({
     mutationFn: (invoiceId: string) => invoicesApi.pay(invoiceId, { payment_date: todayISO() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["invoices"] })
-      queryClient.invalidateQueries({ queryKey: ["cards"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Fatura paga.", variant: "success" })
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível pagar a fatura."), variant: "error" }),
@@ -59,7 +56,10 @@ export function InvoicesDialog({
           {!isLoading && (!data || data.length === 0) && (
             <p className="text-sm text-muted-foreground">Nenhuma fatura ainda.</p>
           )}
-          {data?.map((invoice: CreditCardInvoice) => (
+          {data?.map((invoice: CreditCardInvoice) => {
+            const remaining = Number(invoice.amount) - Number(invoice.paid_amount ?? 0)
+            const partiallyPaid = invoice.status !== "PAGA" && Number(invoice.paid_amount ?? 0) > 0
+            return (
             <div key={invoice.id} className="rounded-md border border-border p-3 text-sm">
               <div className="flex items-center justify-between">
                 <div>
@@ -73,6 +73,11 @@ export function InvoicesDialog({
                   <span className="font-mono-num font-medium">{formatCurrency(invoice.amount)}</span>
                 </div>
               </div>
+              {partiallyPaid && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Já pago {formatCurrency(invoice.paid_amount)} · falta {formatCurrency(remaining)} (compra lançada depois do pagamento)
+                </p>
+              )}
               <div className="mt-2 flex items-center gap-3">
                 <button
                   className="text-xs text-muted-foreground hover:text-foreground"
@@ -80,14 +85,14 @@ export function InvoicesDialog({
                 >
                   {expanded === invoice.id ? "Ocultar itens" : `Ver itens (${invoice.installments.length})`}
                 </button>
-                {invoice.status !== "PAGA" && Number(invoice.amount) > 0 && (
+                {invoice.status !== "PAGA" && remaining > 0 && (
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={payMutation.isPending}
                     onClick={() => {
                       const confirmed = window.confirm(
-                        `Pagar a fatura de ${formatDate(invoice.competence)} no valor de ${formatCurrency(invoice.amount)}? ` +
+                        `Pagar a fatura de ${formatDate(invoice.competence)} no valor de ${formatCurrency(remaining)}? ` +
                           "O valor será debitado da conta de pagamento do cartão com a data de hoje.",
                       )
                       if (confirmed) payMutation.mutate(invoice.id)
@@ -113,7 +118,8 @@ export function InvoicesDialog({
                 </div>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </DialogContent>
     </Dialog>

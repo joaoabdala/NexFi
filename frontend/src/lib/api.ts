@@ -30,7 +30,14 @@ async function refreshAccessToken(): Promise<RefreshResult> {
     return { token: response.data.access_token as string }
   } catch (error) {
     const status = (error as AxiosError).response?.status
-    if (status === 401 || status === 403) return "expired"
+    if (status === 401 || status === 403) {
+      // Outra aba pode ter renovado primeiro com o mesmo refresh token (ele é rotacionado a cada
+      // uso, então o nosso virou inválido). Se o localStorage já tem um par novo, usa esse em
+      // vez de deslogar todas as abas.
+      const latest = getTokens()
+      if (latest && latest.refresh_token !== tokens.refresh_token) return { token: latest.access_token }
+      return "expired"
+    }
     return "unavailable"
   }
 }

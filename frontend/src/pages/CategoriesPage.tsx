@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/toaster"
 import { useCategories } from "@/hooks/useReferenceData"
 import type { Category } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const KIND_LABEL: Record<string, string> = { RECEITA: "Receita", DESPESA: "Despesa", AMBOS: "Ambos" }
 
@@ -26,6 +27,7 @@ export function CategoriesPage() {
       queryClient.invalidateQueries({ queryKey: ["categories"] })
       notify({ title: "Categoria inativada.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   return (
@@ -85,7 +87,7 @@ export function CategoriesPage() {
                   </button>
                   {parent.active && (
                     <button
-                      onClick={() => deactivateMutation.mutate(parent.id)}
+                      onClick={() => window.confirm(`Inativar a categoria "${parent.name}"?`) && deactivateMutation.mutate(parent.id)}
                       className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -105,7 +107,7 @@ export function CategoriesPage() {
                         <Pencil className="h-3 w-3 text-muted-foreground" />
                       </button>
                       {child.active && (
-                        <button onClick={() => deactivateMutation.mutate(child.id)}>
+                        <button onClick={() => window.confirm(`Inativar a subcategoria "${child.name}"?`) && deactivateMutation.mutate(child.id)}>
                           <Trash2 className="h-3 w-3 text-muted-foreground" />
                         </button>
                       )}

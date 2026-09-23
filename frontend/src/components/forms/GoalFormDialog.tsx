@@ -13,11 +13,12 @@ import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import type { FinancialGoal } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { optionalNumber } from "@/lib/zod-helpers"
 
 const schema = z.object({
   name: z.string().min(1, "Informe o nome."),
   target_amount: z.coerce.number().positive("Informe o valor alvo."),
-  current_amount: z.coerce.number().optional(),
+  current_amount: optionalNumber(z.coerce.number()),
   linked_account_id: z.string().optional(),
   target_date: z.string().optional(),
 })
@@ -99,7 +100,7 @@ export function GoalFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma (valor manual)</SelectItem>
-                    {accounts?.map((a) => (
+                    {accounts?.filter((a) => a.active).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.institution_name} — {a.name}
                       </SelectItem>

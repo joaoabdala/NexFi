@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { LoadError } from "@/components/LoadError"
 
 const PERIODS = [
   { value: "3m", label: "3 meses" },
@@ -45,10 +46,12 @@ const PIE_COLORS = ["#14BBA6", "#5EEEA4", "#94A3B8", "#0e9484", "#1f2937", "#38b
 
 export function DashboardPage() {
   const [period, setPeriod] = useState("6m")
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["dashboard", period],
     queryFn: () => dashboardApi.get(period),
   })
+
+  if (isError) return <LoadError onRetry={() => void refetch()} message="Não foi possível carregar o dashboard." />
 
   if (isLoading || !data) {
     return (

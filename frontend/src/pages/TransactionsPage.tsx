@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
 import { ArrowLeftRight, Plus, Search, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { transactionsApi, type TransactionFilters } from "@/api/transactions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { flattenCategories, useAccounts, useCategories } from "@/hooks/useRefere
 import { formatCurrency, formatDate } from "@/lib/format"
 import type { TransactionStatus, TransactionType } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const TYPE_LABELS: Record<TransactionType, string> = {
   RECEITA: "Receita",
@@ -37,10 +38,18 @@ export function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilters>({ page: 1, page_size: 20 })
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
   const [showTransferDialog, setShowTransferDialog] = useState(false)
+  // A busca só vira filtro 400 ms depois da última tecla — antes cada letra disparava uma
+  // requisição (e um cold start na Vercel, se a função estivesse parada).
+  const [searchText, setSearchText] = useState("")
+  useEffect(() => {
+    const timer = setTimeout(() => updateFilter("search", searchText.trim() || undefined), 400)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText])
 
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
-  const flatCategories = flattenCategories(categories ?? [])
+  const flatCategories = flattenCategories(categories ?? [], { includeInactive: true })
   const queryClient = useQueryClient()
   const { notify } = useToast()
 
@@ -52,8 +61,7 @@ export function TransactionsPage() {
   const cancelMutation = useMutation({
     mutationFn: transactionsApi.cancel,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Transação cancelada.", variant: "success" })
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível cancelar."), variant: "error" }),
@@ -88,7 +96,8 @@ export function TransactionsPage() {
           <Input
             placeholder="Buscar por descrição…"
             className="pl-9"
-            onChange={(e) => updateFilter("search", e.target.value || undefined)}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
           />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">

@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/toaster"
 import { formatCurrency } from "@/lib/format"
 import type { CreditCard } from "@/types"
+import { invalidateFinancialData } from "@/lib/invalidate"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 export function CardsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["cards"], queryFn: cardsApi.list })
@@ -26,9 +28,10 @@ export function CardsPage() {
   const deactivateMutation = useMutation({
     mutationFn: cardsApi.deactivate,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cards"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Cartão inativado.", variant: "success" })
     },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível concluir a ação."), variant: "error" }),
   })
 
   return (
@@ -108,7 +111,7 @@ export function CardsPage() {
                   </button>
                   {card.active && (
                     <button
-                      onClick={() => deactivateMutation.mutate(card.id)}
+                      onClick={() => window.confirm(`Inativar o cartão "${card.name}"?`) && deactivateMutation.mutate(card.id)}
                       className="flex items-center gap-1 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Inativar

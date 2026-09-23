@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
+import { useEffect } from "react"
 import { accountsApi } from "@/api/accounts"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -12,6 +13,7 @@ import { useToast } from "@/components/ui/toaster"
 import { todayISO } from "@/lib/format"
 import type { Account } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z.object({
   informed_balance: z.coerce.number(),
@@ -42,12 +44,16 @@ export function BalanceAdjustmentDialog({
     defaultValues: { date: todayISO() },
   })
 
+  // Reseta ao abrir: sem isso, valores digitados e cancelados reapareciam na próxima abertura
+  // (ex.: o saldo informado para a conta A aparecendo no ajuste da conta B).
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
+
   const mutation = useMutation({
     mutationFn: (values: FormValues) => accountsApi.adjustBalance(account!.id, values),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Saldo ajustado.", variant: "success" })
       reset()
       onOpenChange(false)

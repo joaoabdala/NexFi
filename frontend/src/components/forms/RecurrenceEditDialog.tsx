@@ -22,6 +22,7 @@ import { flattenCategories, useAccounts, useCategories } from "@/hooks/useRefere
 import { formatDate } from "@/lib/format"
 import type { RecurrenceRule } from "@/types"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -79,8 +80,7 @@ export function RecurrenceEditDialog({
     mutationFn: (values: FormValues) =>
       recurrencesApi.update(rule!.id, { ...values, category_id: values.category_id || null, end_date: values.end_date || null }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["recurrences"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Recorrência atualizada.", variant: "success" })
       onOpenChange(false)
     },

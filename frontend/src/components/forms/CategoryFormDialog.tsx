@@ -107,7 +107,13 @@ export function CategoryFormDialog({
               control={control}
               name="parent_id"
               render={({ field }) => (
-                <Select value={field.value || "none"} onValueChange={(v) => field.onChange(v === "none" ? "" : v)}>
+                // Mover uma categoria para outro pai não é suportado pela API (o campo era
+                // ignorado em silêncio): bloqueado na edição.
+                <Select
+                  value={field.value || "none"}
+                  onValueChange={(v) => field.onChange(v === "none" ? "" : v)}
+                  disabled={!!category}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Categoria principal" />
                   </SelectTrigger>

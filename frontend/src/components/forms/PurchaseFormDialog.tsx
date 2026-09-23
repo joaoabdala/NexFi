@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
+import { useEffect } from "react"
 import { cardsApi } from "@/api/cards"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -12,6 +13,7 @@ import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { invalidateFinancialData } from "@/lib/invalidate"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -48,14 +50,17 @@ export function PurchaseFormDialog({
     defaultValues: { purchase_date: todayISO(), installments_total: 1 },
   })
 
+  // Reseta ao abrir: sem isso, valores digitados e cancelados reapareciam na próxima abertura
+  // (ex.: o saldo informado para a conta A aparecendo no ajuste da conta B).
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
+
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
       cardsApi.createPurchase(cardId!, { ...values, category_id: values.category_id || null }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cards"] })
-      queryClient.invalidateQueries({ queryKey: ["invoices"] })
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
-      queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      invalidateFinancialData(queryClient)
       notify({ title: "Compra registrada.", variant: "success" })
       reset()
       onOpenChange(false)
