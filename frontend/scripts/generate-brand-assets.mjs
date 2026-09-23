@@ -55,26 +55,25 @@ function png(svg, width, path) {
   console.log(`${path.padEnd(26)} ${width}px  ${(data.length / 1024).toFixed(1)} KB`)
 }
 
-/** Prévia de link (WhatsApp, Telegram, LinkedIn, X…): 1200×630, o formato padrão do Open Graph. */
+/** Prévia de link (WhatsApp, Telegram, LinkedIn, X…): 1200×630, o formato padrão do Open Graph.
+ * Tudo CENTRALIZADO: o WhatsApp recorta um quadrado do meio da imagem para a miniatura pequena, e
+ * com a logo à esquerda só aparecia um pedaço do texto. O quadrado central (x 285–915) contém a
+ * logo e o nome inteiros. A descrição fica no texto da prévia, não na imagem. */
 function ogSvg() {
   const gridLines = []
   for (let x = 0; x <= 1200; x += 60) gridLines.push(`<line x1="${x}" y1="0" x2="${x}" y2="630"/>`)
   for (let y = 0; y <= 630; y += 60) gridLines.push(`<line x1="0" y1="${y}" x2="1200" y2="${y}"/>`)
+  const tile = 250 // lado do ícone, em px
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="${MIDNIGHT}"/>
   <g stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1">${gridLines.join("")}</g>
-  <g transform="translate(700 70) scale(8)" opacity="0.08">${mark({ stroke: 6, dot: 5 })}</g>
-  <g transform="translate(96 150)">
-    <g transform="scale(2.6)">
-      <rect width="64" height="64" rx="14" fill="#111827"/>
-      ${mark()}
-    </g>
-    <text x="206" y="118" font-family="Space Grotesk" font-weight="600" font-size="104" fill="#F1F5F9">Nex<tspan fill="${TEAL}">Fi</tspan></text>
+  <g transform="translate(${600 - tile / 2} 70) scale(${tile / 64})">
+    <rect width="64" height="64" rx="14" fill="#111827"/>
+    ${mark()}
   </g>
-  <text x="96" y="398" font-family="Space Grotesk" font-weight="600" font-size="46" fill="${TEAL_LIGHT}">Finanças pessoais</text>
-  <text x="96" y="452" font-family="Space Grotesk" font-weight="400" font-size="30" fill="#94A3B8">Contas, cartões, financiamentos e metas em um só lugar,</text>
-  <text x="96" y="494" font-family="Space Grotesk" font-weight="400" font-size="30" fill="#94A3B8">com projeção de saldo e das faturas mês a mês.</text>
-  <text x="96" y="566" font-family="Space Grotesk" font-weight="400" font-size="24" fill="#64748B">nexfi.abdalanexus.com</text>
+  <text x="600" y="450" text-anchor="middle" font-family="Space Grotesk" font-weight="600" font-size="96" fill="#F1F5F9">Nex<tspan fill="${TEAL}">Fi</tspan></text>
+  <text x="600" y="512" text-anchor="middle" font-family="Space Grotesk" font-weight="600" font-size="38" fill="${TEAL_LIGHT}">Finanças pessoais</text>
+  <text x="600" y="580" text-anchor="middle" font-family="Space Grotesk" font-weight="400" font-size="24" fill="#64748B">nexfi.abdalanexus.com</text>
 </svg>`
 }
 
