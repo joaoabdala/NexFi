@@ -62,7 +62,8 @@ def health() -> dict[str, str]:
 PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
 
 
-@app.get("/{full_path:path}", include_in_schema=False)
+# GET e HEAD: previews de link e monitores de uptime costumam checar a página com HEAD.
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
 def spa_fallback(full_path: str) -> FileResponse:
     if full_path == "api" or full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Recurso não encontrado.")

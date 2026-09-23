@@ -63,7 +63,7 @@ O administrador de produção já existe no Neon. Novos usuários são criados p
 3. Em *Root Directory*, manter marcada a opção de **incluir arquivos fora do Root Directory no
    build** (padrão) — o build precisa ler `../frontend`.
 4. Build Command, região e limites já vêm do `backend/vercel.json` — não precisa preencher nada.
-5. **Environment Variables** (Production e Preview):
+5. **Environment Variables** — marque **só Production**:
 
 | Variável | Valor |
 |---|---|
@@ -84,8 +84,29 @@ tudo, confira os logs da função: a mensagem diz qual variável falta. `/docs` 
    - `https://<projeto>.vercel.app/` → tela de login
    - Login com o administrador de produção (já criado no Neon).
 
-> Previews (branches/PRs) usam o mesmo banco se `DATABASE_URL` estiver em Preview. Para
-> isolar, dá para usar a integração Neon ↔ Vercel, que cria um branch do banco por preview.
+> **Previews (branches/PRs):** não coloque `DATABASE_URL`/`SECRET_KEY` de produção em Preview —
+> todo branch enviado ao GitHub rodaria código ainda não revisado contra os dados reais, com a
+> chave que assina as sessões. Sem essas variáveis, o preview simplesmente não sobe (as travas de
+> produção barram). Se quiser previews funcionais, use a integração Neon ↔ Vercel (cria um branch
+> isolado do banco por preview) com uma `SECRET_KEY` diferente, e mantenha a *Deployment
+> Protection* da Vercel ligada (padrão) para que só você acesse as URLs de preview.
+
+Segurança já configurada no `backend/vercel.json` (vale para todas as respostas): CSP restrita
+(scripts só do próprio domínio; estilos inline e Google Fonts liberados), `X-Frame-Options: DENY`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` e `Permissions-Policy`. Ao adicionar um
+serviço externo no frontend (analytics, fontes, imagens de outro domínio), a CSP precisa ser
+ajustada — senão o navegador bloqueia e registra o erro no console.
+
+## Migrations pendentes
+
+Sempre que um commit trouxer arquivo novo em `backend/alembic/versions/`, rode antes do deploy:
+
+```bash
+cd backend
+NEXFI_ENV_FILE=.env.neon .venv/Scripts/alembic upgrade head
+```
+
+Última migration: `a5c70d7ccfe2` (tabela `login_throttles`, limite de tentativas de login).
 
 ## Simular a produção localmente
 

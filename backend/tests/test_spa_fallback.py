@@ -55,3 +55,9 @@ def test_path_traversal_outside_public_is_blocked(client):
 def test_without_frontend_build_returns_404(tmp_path, monkeypatch):
     monkeypatch.setattr(main_module, "PUBLIC_DIR", tmp_path / "nao-existe")
     assert TestClient(main_module.app).get("/transacoes").status_code == 404
+
+
+def test_head_request_on_react_route_is_accepted(client):
+    """Previews de link e monitores de uptime usam HEAD — antes dava 405."""
+    response = client.head("/transacoes")
+    assert response.status_code == 200
