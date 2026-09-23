@@ -159,7 +159,7 @@ export function LoginVisual() {
           </p>
         </div>
 
-        {/* Espaçador: o crédito "© Abdala Nexus" agora fica no AppFooter, na largura toda. */}
+        {/* Espaçador: o crédito "© Abdala Nexus" fica no AppFooter, na coluna das credenciais. */}
         <div />
       </div>
     </div>

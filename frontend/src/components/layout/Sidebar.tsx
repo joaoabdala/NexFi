@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { cn } from "@/lib/utils"
 import { navSections } from "./nav-config"
 import { BrandMark } from "@/components/BrandMark"
+import { AppFooter } from "@/components/AppFooter"
 
 function visibleFor(items: typeof navSections, isAdmin: boolean): typeof navSections {
   return items
@@ -88,11 +89,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col gap-6 px-3 py-5">
       <Logo />
-      <nav className="flex flex-col gap-1">
+      <nav className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1 scrollbar-thin">
         {items.map((item) => (
           <NavGroup key={item.label} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
+      <AppFooter className="border-t border-border pt-4" />
     </div>
   )
 }

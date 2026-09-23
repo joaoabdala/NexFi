@@ -47,11 +47,11 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="grid flex-1 lg:grid-cols-2">
-        <LoginVisual />
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <LoginVisual />
 
-        <div className="flex items-center justify-center bg-background px-4 py-12">
+      <div className="flex flex-col bg-background px-4">
+        <div className="flex flex-1 items-center justify-center py-12">
           <div className="animate-nexfi-fade-in-up w-full max-w-sm">
             <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
               <BrandMark className="h-12 w-12" />
@@ -107,8 +107,9 @@ export function LoginPage() {
             </form>
           </div>
         </div>
+        {/* Crédito só na coluna das credenciais (o painel da esquerda é só visual). */}
+        <AppFooter className="pb-6" />
       </div>
-      <AppFooter />
     </div>
   )
 }
