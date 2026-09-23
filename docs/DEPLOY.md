@@ -3,8 +3,8 @@
 Arquitetura de produção — **um único projeto Vercel**, frontend e API no mesmo domínio:
 
 ```
-navegador ──► nexfi.vercel.app
-               ├─ /, /assets/*        → CDN (build do React copiado para backend/public/)
+navegador ──► nexfi.abdalanexus.com (Cloudflare → Vercel)
+               ├─ /, /assets/*        → função (build do React em backend/public/), cacheado na Cloudflare
                ├─ /api/v1/*           → FastAPI (Vercel Function, região gru1)
                └─ /transacoes, ...    → FastAPI devolve o index.html (F5 em rota do React)
                         │
@@ -15,10 +15,14 @@ Como funciona:
 
 - O projeto Vercel tem Root Directory `backend` e é detectado como **FastAPI** (`app/main.py`).
 - O `buildCommand` de [`backend/vercel.json`](../backend/vercel.json) compila o frontend
-  (`frontend/`) e copia o `dist/` para `backend/public/`. A Vercel serve tudo que está em
-  `public/` direto do CDN, sem passar pelo Python.
-- Rotas do React acessadas diretamente (F5, link compartilhado) não existem em `public/`, então
-  caem no FastAPI, que devolve o `index.html` (rota `spa_fallback` em `app/main.py`).
+  (`frontend/`) e copia o `dist/` para `backend/public/`, que entra no pacote da função
+  (`includeFiles: public/**`). A rota `spa_fallback` (`app/main.py`) serve esses arquivos — os
+  de `/assets` com cache imutável — e devolve o `index.html` para rotas do React (F5, link
+  compartilhado). **A Vercel não promove ao CDN um `public/` gerado no build** (confirmado no
+  1º deploy: os assets davam 404 e a tela ficava preta); quem cacheia os assets é a Cloudflare.
+- Erros (404) saem com `Cache-Control: no-store`. Se algum dia um erro ficar em cache na
+  Cloudflare (tela preta com o HTML carregando), limpe: Cloudflare → abdalanexus.com → Caching →
+  Configuration → **Purge Everything**, e Ctrl+Shift+R no navegador.
 - O build de produção usa [`frontend/.env.production`](../frontend/.env.production)
   (`VITE_API_URL=/api/v1`): mesma origem, **sem CORS** e sem preflight.
 
