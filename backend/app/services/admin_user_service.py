@@ -6,7 +6,7 @@ from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
-from app.repositories import user_repository
+from app.repositories import auth_repository, user_repository
 from app.schemas.admin import AdminUserCreate, AdminUserUpdate
 
 
@@ -69,6 +69,9 @@ def update_user(db: Session, user_id: uuid.UUID, payload: AdminUserUpdate) -> Us
         setattr(user, field, value)
     if payload.password:
         user.password_hash = hash_password(payload.password)
+        auth_repository.delete_all_refresh_tokens(db, user.id)
+    if payload.is_active is False:
+        auth_repository.delete_all_refresh_tokens(db, user.id)
 
     db.add(user)
     db.commit()

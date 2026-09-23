@@ -12,8 +12,6 @@ def configure_logging() -> None:
     )
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    # Silencia logs verbosos de bibliotecas de terceiros com dados potencialmente sensíveis.
-    logging.getLogger("passlib").setLevel(logging.ERROR)
 
 
 logger = logging.getLogger("nexfi")

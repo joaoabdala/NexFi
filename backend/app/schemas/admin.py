@@ -9,7 +9,7 @@ from app.schemas.common import ORMModel
 
 class AdminUserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
     name: str = Field(min_length=1, max_length=255)
     role: UserRole = UserRole.USER
     is_active: bool = True
@@ -20,7 +20,7 @@ class AdminUserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     role: UserRole | None = None
     is_active: bool | None = None
-    password: str | None = Field(default=None, min_length=8)
+    password: str | None = Field(default=None, min_length=8, max_length=72)
 
 
 class AdminUserOut(ORMModel):

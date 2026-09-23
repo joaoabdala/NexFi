@@ -5,5 +5,5 @@ export const authApi = {
   updateProfile: (payload: { name?: string; timezone?: string; locale?: string }) =>
     api.patch<User>("/auth/me", payload).then((r) => r.data),
   changePassword: (payload: { current_password: string; new_password: string }) =>
-    api.post("/auth/change-password", payload),
+    api.post<{ access_token: string; refresh_token: string }>("/auth/change-password", payload).then((r) => r.data),
 }

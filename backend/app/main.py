@@ -15,6 +15,10 @@ app = FastAPI(
     title="NexFi API",
     description="API do NexFi — Personal Finance by Abdala Nexus",
     version="1.0.0",
+    # Em produção não expõe o mapa completo da API (/docs, /redoc, /openapi.json).
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 app.add_middleware(

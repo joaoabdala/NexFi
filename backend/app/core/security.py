@@ -2,20 +2,36 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 
 from app.core.config import settings
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt só considera os primeiros 72 bytes da senha (e o bcrypt 5 recusa senhas maiores).
+# Os schemas limitam o tamanho; aqui é a última barreira.
+BCRYPT_MAX_BYTES = 72
+
+# Hash fixo usado quando o e-mail não existe, para o login levar o mesmo tempo nos dois casos
+# (sem isso, a resposta instantânea revelava quais e-mails têm conta).
+_DUMMY_HASH = bcrypt.hashpw(b"nexfi-dummy-password", bcrypt.gensalt()).decode()
 
 
 def hash_password(password: str) -> str:
-    return _pwd_context.hash(password)
+    encoded = password.encode()
+    if len(encoded) > BCRYPT_MAX_BYTES:
+        raise ValueError("Senha maior que 72 bytes.")
+    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode()
 
 
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    return _pwd_context.verify(plain_password, password_hash)
+def verify_password(plain_password: str, password_hash: str | None) -> bool:
+    """Compara em tempo constante. Com ``password_hash=None`` (usuário inexistente) ainda roda um
+    bcrypt completo contra um hash fixo e devolve False."""
+    encoded = plain_password.encode()[:BCRYPT_MAX_BYTES]
+    try:
+        matches = bcrypt.checkpw(encoded, (password_hash or _DUMMY_HASH).encode())
+    except ValueError:  # hash corrompido/formato desconhecido
+        return False
+    return matches and password_hash is not None
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
@@ -28,8 +44,13 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
 
 def decode_access_token(token: str) -> str | None:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
+    except jwt.PyJWTError:
         return None
     if payload.get("type") != "access":
         return None

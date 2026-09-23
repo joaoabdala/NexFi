@@ -1,11 +1,12 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import RecurrenceFrequency, TransactionType
 from app.schemas.common import ORMModel, PositiveMoney
+from app.utils.dates import local_today
 
 RECURRENCE_TYPES = {TransactionType.RECEITA, TransactionType.DESPESA}
 
@@ -35,6 +36,15 @@ class RecurrenceCreate(BaseModel):
     def positive(cls, value: Decimal) -> Decimal:
         if value <= 0:
             raise ValueError("O valor deve ser maior que zero.")
+        return value
+
+    @field_validator("start_date")
+    @classmethod
+    def start_date_within_one_year_back(cls, value: date) -> date:
+        # Uma data inicial muito antiga gera um lançamento pendente para cada ocorrência
+        # passada — com intervalo de 1 dia desde 2000, eram ~10 mil linhas numa requisição.
+        if value < local_today() - timedelta(days=366):
+            raise ValueError("A data inicial não pode ser anterior a um ano atrás.")
         return value
 
 

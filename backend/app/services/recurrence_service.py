@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -13,19 +14,23 @@ from app.schemas.recurrence import RecurrenceCreate, RecurrenceUpdate
 from app.utils.dates import add_months, safe_day_in_month, local_today
 
 
+# Teto de lançamentos gerados por regra em uma chamada: uma única requisição não pode encher o
+# banco (Neon Free bloqueia escritas acima de 0,5 GB). O restante é gerado nas próximas chamadas.
+MAX_GENERATED_PER_RULE = 400
+
+
 def _next_occurrence(rule: RecurrenceRule, current: date) -> date:
     if rule.frequency == RecurrenceFrequency.SEMANAL:
         return current + timedelta(days=7)
+    # Sem dia de referência, usa o dia da data de início: uma regra iniciada em 31/01 não pode
+    # "escorregar" para o dia 28 em todos os meses depois de passar por fevereiro.
+    reference_day = rule.reference_day or rule.start_date.day
     if rule.frequency == RecurrenceFrequency.MENSAL:
         nxt = add_months(current, 1)
-        if rule.reference_day:
-            nxt = safe_day_in_month(nxt.year, nxt.month, rule.reference_day)
-        return nxt
+        return safe_day_in_month(nxt.year, nxt.month, reference_day)
     if rule.frequency == RecurrenceFrequency.ANUAL:
         nxt = add_months(current, 12)
-        if rule.reference_day:
-            nxt = safe_day_in_month(nxt.year, nxt.month, rule.reference_day)
-        return nxt
+        return safe_day_in_month(nxt.year, nxt.month, reference_day)
     # PERSONALIZADA
     return current + timedelta(days=rule.custom_interval_days or 30)
 
@@ -59,7 +64,12 @@ def update_recurrence(
     db: Session, user_id: uuid.UUID, rule_id: uuid.UUID, payload: RecurrenceUpdate
 ) -> RecurrenceRule:
     rule = get_recurrence(db, user_id, rule_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    # A criação já valida a categoria; a edição também precisa — senão dava para apontar a regra
+    # para a categoria de outro usuário (e ver o nome dela no dashboard).
+    if data.get("category_id") and not category_repository.get_by_id(db, user_id, data["category_id"]):
+        raise ValidationError("Categoria inválida.")
+    for field, value in data.items():
         setattr(rule, field, value)
     db.add(rule)
     db.commit()
@@ -71,6 +81,19 @@ def delete_recurrence(db: Session, user_id: uuid.UUID, rule_id: uuid.UUID) -> No
     rule = get_recurrence(db, user_id, rule_id)
     rule.active = False
     db.add(rule)
+    # Lançamentos futuros ainda pendentes dessa regra deixam de fazer sentido: sem isso eles
+    # continuavam na projeção de saldo depois de a recorrência ser excluída.
+    future_pending = db.scalars(
+        select(Transaction).where(
+            Transaction.recurrence_rule_id == rule.id,
+            Transaction.user_id == user_id,
+            Transaction.status == TransactionStatus.PENDENTE,
+            Transaction.competence_date >= local_today(),
+        )
+    )
+    for txn in future_pending:
+        txn.status = TransactionStatus.CANCELADA
+        db.add(txn)
     db.commit()
 
 
@@ -95,7 +118,8 @@ def generate_pending_transactions(
             continue
         cursor = rule.last_generated_competence or rule.start_date
         first_iteration = rule.last_generated_competence is None
-        while cursor <= horizon:
+        generated_for_rule = 0
+        while cursor <= horizon and generated_for_rule < MAX_GENERATED_PER_RULE:
             if rule.end_date and cursor > rule.end_date:
                 break
             if cursor >= rule.start_date and (first_iteration or cursor > rule.last_generated_competence):
@@ -115,6 +139,7 @@ def generate_pending_transactions(
                 db.add(txn)
                 rule.last_generated_competence = cursor
                 created += 1
+                generated_for_rule += 1
             first_iteration = False
             cursor = _next_occurrence(rule, cursor)
         db.add(rule)

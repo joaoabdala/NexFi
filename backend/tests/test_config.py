@@ -24,11 +24,44 @@ def test_explicit_driver_and_sqlite_urls_are_untouched():
         assert Settings(_env_file=None, DATABASE_URL=url).DATABASE_URL == url
 
 
+PG_URL = "postgresql://u:p@ep-x-pooler.sa-east-1.aws.neon.tech/neondb"
+
+
+@pytest.fixture(autouse=True)
+def _not_on_vercel(monkeypatch):
+    monkeypatch.delenv("VERCEL", raising=False)
+
+
 def test_production_refuses_default_secret_key():
     with pytest.raises(ValidationError, match="SECRET_KEY"):
-        Settings(_env_file=None, ENVIRONMENT="production")
+        Settings(_env_file=None, ENVIRONMENT="production", DATABASE_URL=PG_URL)
 
 
-def test_production_accepts_real_secret_key():
-    settings = Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 64)
-    assert settings.ENVIRONMENT == "production"
+@pytest.mark.parametrize("key", ["", "curta", "x" * 31])
+def test_production_refuses_short_secret_key(key):
+    """python-jose/PyJWT assinam até com chave vazia — o tamanho mínimo precisa ser checado."""
+    with pytest.raises(ValidationError, match="32 caracteres"):
+        Settings(_env_file=None, ENVIRONMENT="production", DATABASE_URL=PG_URL, SECRET_KEY=key)
+
+
+def test_production_refuses_sqlite_fallback():
+    """Sem DATABASE_URL na Vercel, a API cairia no SQLite (disco somente leitura)."""
+    with pytest.raises(ValidationError, match="DATABASE_URL"):
+        Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 64)
+
+
+@pytest.mark.parametrize("env", ["Production", " PRODUCTION "])
+def test_environment_is_case_insensitive(env):
+    with pytest.raises(ValidationError, match="SECRET_KEY"):
+        Settings(_env_file=None, ENVIRONMENT=env, DATABASE_URL=PG_URL)
+
+
+def test_vercel_counts_as_production_even_without_environment(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    with pytest.raises(ValidationError, match="SECRET_KEY"):
+        Settings(_env_file=None, ENVIRONMENT="development", DATABASE_URL=PG_URL)
+
+
+def test_production_accepts_real_configuration():
+    settings = Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 64, DATABASE_URL=PG_URL)
+    assert settings.is_production

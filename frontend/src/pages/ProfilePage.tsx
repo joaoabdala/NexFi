@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/toaster"
 import { useAuth } from "@/contexts/AuthContext"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { setTokens } from "@/lib/auth-storage"
 
 const profileSchema = z.object({
   name: z.string().min(1, "Informe o nome."),
@@ -53,8 +54,10 @@ export function ProfilePage() {
   const passwordMutation = useMutation({
     mutationFn: (values: PasswordValues) =>
       authApi.changePassword({ current_password: values.current_password, new_password: values.new_password }),
-    onSuccess: () => {
-      notify({ title: "Senha alterada com sucesso.", variant: "success" })
+    onSuccess: (tokens) => {
+      // A troca encerra todas as sessões; o backend devolve um par novo só para esta aba.
+      setTokens(tokens)
+      notify({ title: "Senha alterada. Outros dispositivos foram desconectados.", variant: "success" })
       passwordForm.reset()
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível alterar a senha."), variant: "error" }),

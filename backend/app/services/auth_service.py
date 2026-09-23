@@ -28,7 +28,10 @@ def _issue_tokens(db: Session, user: User) -> TokenResponse:
 
 def login(db: Session, email: str, password: str) -> TokenResponse:
     user = auth_repository.get_user_by_email(db, email)
-    if not user or not user.is_active or not verify_password(password, user.password_hash):
+    # verify_password roda o bcrypt mesmo sem usuário: o tempo de resposta não revela se o
+    # e-mail existe.
+    password_ok = verify_password(password, user.password_hash if user else None)
+    if not user or not user.is_active or not password_ok:
         raise UnauthorizedError("E-mail ou senha inválidos.")
     return _issue_tokens(db, user)
 
@@ -56,12 +59,15 @@ def logout(db: Session, refresh_token: str) -> None:
         db.commit()
 
 
-def change_password(db: Session, user: User, current_password: str, new_password: str) -> None:
+def change_password(db: Session, user: User, current_password: str, new_password: str) -> TokenResponse:
+    """Troca a senha e encerra TODAS as sessões (um refresh token roubado deixa de valer).
+    Devolve um par novo de tokens para manter logado só o dispositivo que fez a troca."""
     if not verify_password(current_password, user.password_hash):
         raise ValidationError("Senha atual incorreta.")
     user.password_hash = hash_password(new_password)
     db.add(user)
-    db.commit()
+    auth_repository.delete_all_refresh_tokens(db, user.id)
+    return _issue_tokens(db, user)
 
 
 def update_profile(db: Session, user: User, payload: UpdateProfileRequest) -> User:

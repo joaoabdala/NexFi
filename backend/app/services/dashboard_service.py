@@ -245,7 +245,12 @@ def get_expenses_by_category(db: Session, user_id: uuid.UUID, year: int, month: 
     category_ids = [cid for cid in totals if cid is not None]
     categories = {}
     if category_ids:
-        categories = {c.id: c for c in db.scalars(select(Category).where(Category.id.in_(category_ids)))}
+        categories = {
+            c.id: c
+            for c in db.scalars(
+                select(Category).where(Category.id.in_(category_ids), Category.user_id == user_id)
+            )
+        }
 
     return [
         {

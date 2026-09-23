@@ -27,6 +27,12 @@ def revoke_refresh_token(db: Session, record: RefreshToken) -> None:
     db.add(record)
 
 
+def delete_all_refresh_tokens(db: Session, user_id) -> None:
+    """Encerra todas as sessões do usuário (troca/redefinição de senha, desativação)."""
+    db.flush()
+    db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+
+
 def delete_dead_refresh_tokens(db: Session, user_id) -> None:
     """Remove tokens revogados ou expirados do usuário — nenhum deles volta a ser aceito, e
     com a rotação a cada refresh a tabela cresceria indefinidamente."""

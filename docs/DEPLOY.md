@@ -73,6 +73,12 @@ O administrador de produção já existe no Neon. Novos usuários são criados p
 
 `CORS_ORIGINS` e `VITE_API_URL` **não** são necessárias em produção (mesmo domínio).
 
+Travas de produção (ativas com `ENVIRONMENT=production` **ou** automaticamente na Vercel, via
+`VERCEL=1`): a API **não sobe** se a `SECRET_KEY` tiver menos de 32 caracteres ou for a de
+exemplo, nem se `DATABASE_URL` estiver faltando (cairia no SQLite). Se o deploy der erro 500 em
+tudo, confira os logs da função: a mensagem diz qual variável falta. `/docs` e
+`/openapi.json` ficam desativados em produção.
+
 6. **Deploy**. Conferir:
    - `https://<projeto>.vercel.app/health` → `{"status":"ok"}`
    - `https://<projeto>.vercel.app/` → tela de login

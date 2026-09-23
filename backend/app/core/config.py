@@ -43,10 +43,24 @@ class Settings(BaseSettings):
                 return "postgresql+psycopg://" + value[len(prefix):]
         return value
 
+    @property
+    def is_production(self) -> bool:
+        # Na Vercel (VERCEL=1) vale como produção mesmo se ENVIRONMENT for esquecida ou escrita
+        # como "Production" — as travas abaixo não podem depender de digitar certo.
+        return self.ENVIRONMENT.strip().lower() == "production" or os.environ.get("VERCEL") == "1"
+
     @model_validator(mode="after")
-    def _require_real_secret_in_production(self) -> "Settings":
-        if self.ENVIRONMENT == "production" and self.SECRET_KEY in _INSECURE_SECRET_KEYS:
-            raise ValueError("SECRET_KEY precisa ser definida com um valor aleatório em produção.")
+    def _validate_production_settings(self) -> "Settings":
+        if not self.is_production:
+            return self
+        if self.SECRET_KEY in _INSECURE_SECRET_KEYS or len(self.SECRET_KEY) < 32:
+            raise ValueError(
+                "SECRET_KEY precisa ser aleatória e ter pelo menos 32 caracteres em produção."
+            )
+        if self.DATABASE_URL.startswith("sqlite"):
+            # Sem DATABASE_URL a API cairia no SQLite padrão, num disco somente leitura: todo
+            # endpoint com banco daria 500 enquanto o /health continuaria "ok".
+            raise ValueError("DATABASE_URL não configurada: produção exige Postgres, não SQLite.")
         return self
 
     @property

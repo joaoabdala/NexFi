@@ -51,11 +51,11 @@ def update_me(
     return auth_service.update_profile(db, current_user, payload)
 
 
-@router.post("/change-password", response_model=MessageResponse)
+@router.post("/change-password", response_model=TokenResponse)
 def change_password(
     payload: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> MessageResponse:
-    auth_service.change_password(db, current_user, payload.current_password, payload.new_password)
-    return MessageResponse(message="Senha alterada com sucesso.")
+) -> TokenResponse:
+    """Troca a senha, encerra as outras sessões e devolve tokens novos para esta."""
+    return auth_service.change_password(db, current_user, payload.current_password, payload.new_password)
