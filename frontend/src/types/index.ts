@@ -335,6 +335,8 @@ export interface Projection {
   horizon_days: number
   current_balance: string
   projected_balance: string
+  /** Faturas de cartão em aberto que vencem no horizonte (já descontadas da projeção). */
+  card_invoices_due: string
 }
 
 export interface Dashboard {

@@ -33,3 +33,13 @@ def get_transfer(
     db: Session = Depends(get_db),
 ):
     return transfer_service.get_transfer(db, current_user.id, transfer_id)
+
+
+@router.post("/{transfer_id}/cancel", response_model=TransferOut)
+def cancel_transfer(
+    transfer_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Desfaz a transferência (os saldos das duas contas voltam ao que eram)."""
+    return transfer_service.cancel_transfer(db, current_user.id, transfer_id)

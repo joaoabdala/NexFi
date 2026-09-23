@@ -41,4 +41,6 @@ export const transactionsApi = {
   update: (id: string, payload: Partial<TransactionInput>) =>
     api.put<Transaction>(`/transactions/${id}`, payload).then((r) => r.data),
   cancel: (id: string) => api.delete(`/transactions/${id}`),
+  /** Desfaz transferência, pagamento de fatura ou de parcela (o backend delega ao módulo dono). */
+  reverse: (id: string) => api.post(`/transactions/${id}/reverse`),
 }

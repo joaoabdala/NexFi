@@ -349,3 +349,39 @@ def create_amortization(
         raise
     db.refresh(amortization)
     return amortization
+
+
+def undo_installment_payment(
+    db: Session, user_id: uuid.UUID, commitment_id: uuid.UUID, installment_id: uuid.UUID
+) -> CommitmentInstallment:
+    """Desfaz o pagamento de uma parcela: o lançamento fica CANCELADO (o valor volta para a
+    conta) e a parcela volta a PENDENTE. Um financiamento que tinha sido quitado reabre."""
+    commitment = get_commitment(db, user_id, commitment_id)
+    installment = financing_repository.get_installment(db, commitment.id, installment_id)
+    if not installment:
+        raise NotFoundError("Parcela não encontrada.")
+    db.refresh(installment, with_for_update=True)
+    if installment.status != CommitmentInstallmentStatus.PAGA:
+        raise ValidationError("Só é possível desfazer o pagamento de uma parcela paga.")
+
+    try:
+        if installment.transaction_id:
+            txn = db.get(Transaction, installment.transaction_id)
+            if txn and txn.status == TransactionStatus.CONFIRMADA:
+                txn.status = TransactionStatus.CANCELADA
+                db.add(txn)
+        installment.status = CommitmentInstallmentStatus.PENDENTE
+        installment.paid_amount = None
+        installment.payment_date = None
+        installment.transaction_id = None
+        db.add(installment)
+        if commitment.status == CommitmentStatus.QUITADO:
+            commitment.status = CommitmentStatus.ATIVO
+        db.flush()
+        _recompute_outstanding_balance(db, commitment)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(installment)
+    return installment

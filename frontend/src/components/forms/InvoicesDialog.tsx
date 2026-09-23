@@ -45,6 +45,15 @@ export function InvoicesDialog({
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível pagar a fatura."), variant: "error" }),
   })
 
+  const undoMutation = useMutation({
+    mutationFn: (invoiceId: string) => invoicesApi.undoPayment(invoiceId),
+    onSuccess: () => {
+      invalidateFinancialData(queryClient)
+      notify({ title: "Pagamento desfeito. O valor voltou para a conta.", variant: "success" })
+    },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível desfazer o pagamento."), variant: "error" }),
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -99,6 +108,22 @@ export function InvoicesDialog({
                     }}
                   >
                     Pagar fatura
+                  </Button>
+                )}
+                {Number(invoice.paid_amount ?? 0) > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={undoMutation.isPending}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        `Desfazer o último pagamento da fatura de ${formatDate(invoice.competence)}? ` +
+                          "O valor volta para a conta e a fatura fica em aberto de novo.",
+                      )
+                      if (confirmed) undoMutation.mutate(invoice.id)
+                    }}
+                  >
+                    Desfazer pagamento
                   </Button>
                 )}
               </div>

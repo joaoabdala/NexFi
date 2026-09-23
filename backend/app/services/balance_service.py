@@ -78,4 +78,34 @@ def get_projected_balance(db: Session, account: Account, horizon_days: int = 30)
             total += amount
         elif txn.type in DEBIT_TYPES:
             total -= amount
-    return total
+    return total - get_card_invoices_due(db, account, limit_date)
+
+
+def get_card_invoices_due(db: Session, account: Account, limit_date) -> Decimal:
+    """Quanto das faturas de cartão ainda em aberto vai sair desta conta até ``limit_date``.
+
+    As compras no cartão não têm conta (só viram saída de caixa quando a fatura é paga), então
+    sem isto a projeção ignorava a fatura inteira. Considera faturas não pagas que vencem até a
+    data-limite (inclusive as já vencidas) dos cartões cuja conta de pagamento é esta, descontando
+    o que já foi pago de faturas reabertas.
+    """
+    from app.models.card import CreditCard, CreditCardInvoice
+    from app.models.enums import InvoiceStatus
+    from app.services.invoice_service import compute_invoice_amount, compute_invoice_paid
+
+    invoices = db.scalars(
+        select(CreditCardInvoice)
+        .join(CreditCard, CreditCard.id == CreditCardInvoice.card_id)
+        .where(
+            CreditCard.default_payment_account_id == account.id,
+            CreditCard.user_id == account.user_id,
+            CreditCardInvoice.status != InvoiceStatus.PAGA,
+            CreditCardInvoice.due_date <= limit_date,
+        )
+    )
+    due = Decimal("0")
+    for invoice in invoices:
+        remaining = compute_invoice_amount(db, invoice) - compute_invoice_paid(db, invoice)
+        if remaining > 0:
+            due += remaining
+    return due

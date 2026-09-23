@@ -187,3 +187,63 @@ def pay_invoice(
         raise
     db.refresh(invoice)
     return invoice
+
+
+def undo_invoice_payment(
+    db: Session,
+    user_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    transaction_id: uuid.UUID | None = None,
+) -> CreditCardInvoice:
+    """Desfaz um pagamento de fatura (o mais recente, ou o informado).
+
+    O lançamento de pagamento fica CANCELADO (histórico preservado) e o valor volta para a conta;
+    a fatura volta a ter saldo a pagar. Se ainda restarem outros pagamentos que cubram o total,
+    ela continua PAGA.
+    """
+    invoice = card_repository.get_invoice_owned(db, user_id, invoice_id)
+    if not invoice:
+        raise NotFoundError("Fatura não encontrada.")
+    db.refresh(invoice, with_for_update=True)
+
+    stmt = (
+        select(Transaction)
+        .where(
+            Transaction.invoice_id == invoice.id,
+            Transaction.type == TransactionType.PAGAMENTO_FATURA,
+            Transaction.status == TransactionStatus.CONFIRMADA,
+        )
+        .order_by(Transaction.payment_date.desc(), Transaction.created_at.desc())
+    )
+    payments = list(db.scalars(stmt))
+    if transaction_id is not None:
+        payments_to_undo = [p for p in payments if p.id == transaction_id]
+    else:
+        payments_to_undo = payments[:1]
+    if not payments_to_undo:
+        raise ValidationError("Não há pagamento ativo para desfazer nesta fatura.")
+
+    try:
+        payments_to_undo[0].status = TransactionStatus.CANCELADA
+        db.add(payments_to_undo[0])
+        db.flush()
+
+        remaining = [p for p in payments if p.id != payments_to_undo[0].id]
+        latest = remaining[0] if remaining else None
+        invoice.payment_date = latest.payment_date if latest else None
+        invoice.payment_account_id = latest.account_id if latest else None
+        invoice.payment_transaction_id = latest.id if latest else None
+
+        amount = compute_invoice_amount(db, invoice)
+        if latest and compute_invoice_paid(db, invoice) >= amount > 0:
+            invoice.status = InvoiceStatus.PAGA
+        else:
+            invoice.status = InvoiceStatus.ABERTA
+            refresh_invoice_status(invoice)
+        db.add(invoice)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(invoice)
+    return invoice

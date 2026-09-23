@@ -48,6 +48,10 @@ export const financingApi = {
         payload,
       )
       .then((r) => r.data),
+  undoInstallmentPayment: (commitmentId: string, installmentId: string) =>
+    api
+      .post<CommitmentInstallment>(`/financing/${commitmentId}/installments/${installmentId}/undo-payment`)
+      .then((r) => r.data),
 }
 
 export const amortizationsApi = {

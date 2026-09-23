@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError, ValidationError
 from app.models.category import Category
 from app.models.enums import CategoryKind, TransactionStatus, TransactionType
+from app.models.financing import CommitmentInstallment
 from app.models.transaction import Transaction
 from app.repositories import account_repository, category_repository, transaction_repository
 from app.schemas.transaction import TransactionCreate, TransactionFilters, TransactionUpdate
@@ -107,3 +108,24 @@ def cancel_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUI
     db.commit()
     db.refresh(txn)
     return txn
+
+
+def reverse_transaction(db: Session, user_id: uuid.UUID, transaction_id: uuid.UUID) -> None:
+    """Desfaz um lançamento gerado pelo sistema, delegando ao módulo dono dele — cancelar só a
+    transação deixaria a fatura/parcela/outra perna da transferência inconsistente."""
+    from app.services import financing_service, invoice_service, transfer_service
+
+    txn = get_transaction(db, user_id, transaction_id)
+    if txn.status != TransactionStatus.CONFIRMADA:
+        raise ValidationError("Só lançamentos confirmados podem ser desfeitos.")
+    if txn.type == TransactionType.TRANSFERENCIA and txn.transfer_id:
+        transfer_service.cancel_transfer(db, user_id, txn.transfer_id)
+    elif txn.type == TransactionType.PAGAMENTO_FATURA and txn.invoice_id:
+        invoice_service.undo_invoice_payment(db, user_id, txn.invoice_id, transaction_id=txn.id)
+    elif txn.type == TransactionType.PAGAMENTO_FINANCIAMENTO and txn.commitment_installment_id:
+        installment = db.get(CommitmentInstallment, txn.commitment_installment_id)
+        if not installment:
+            raise ValidationError("Parcela do pagamento não encontrada.")
+        financing_service.undo_installment_payment(db, user_id, installment.commitment_id, installment.id)
+    else:
+        raise ValidationError("Este lançamento não pode ser desfeito por aqui. Use a opção Cancelar.")

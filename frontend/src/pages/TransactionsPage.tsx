@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
-import { ArrowLeftRight, Plus, Search, X } from "lucide-react"
+import { ArrowLeftRight, Plus, Search, Undo2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { transactionsApi, type TransactionFilters } from "@/api/transactions"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +34,14 @@ const STATUS_VARIANT: Record<TransactionStatus, "success" | "warning" | "destruc
   CANCELADA: "destructive",
 }
 
+// Lançamentos gerados pelo sistema que podem ser desfeitos (o backend desfaz a operação inteira:
+// as duas pernas da transferência, o pagamento da fatura ou o da parcela).
+const REVERSIBLE_TYPES: Partial<Record<TransactionType, string>> = {
+  TRANSFERENCIA: "Desfazer esta transferência? As duas contas voltam ao saldo anterior.",
+  PAGAMENTO_FATURA: "Desfazer este pagamento de fatura? O valor volta para a conta e a fatura fica em aberto de novo.",
+  PAGAMENTO_FINANCIAMENTO: "Desfazer este pagamento de parcela? O valor volta para a conta e a parcela fica pendente de novo.",
+}
+
 export function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilters>({ page: 1, page_size: 20 })
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
@@ -65,6 +73,15 @@ export function TransactionsPage() {
       notify({ title: "Transação cancelada.", variant: "success" })
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível cancelar."), variant: "error" }),
+  })
+
+  const reverseMutation = useMutation({
+    mutationFn: transactionsApi.reverse,
+    onSuccess: () => {
+      invalidateFinancialData(queryClient)
+      notify({ title: "Lançamento desfeito.", variant: "success" })
+    },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível desfazer."), variant: "error" }),
   })
 
   function updateFilter<K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) {
@@ -219,6 +236,19 @@ export function TransactionsPage() {
                         className="text-muted-foreground hover:text-destructive"
                       >
                         <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    {REVERSIBLE_TYPES[t.type] && t.status === "CONFIRMADA" && (
+                      <button
+                        title="Desfazer"
+                        disabled={reverseMutation.isPending}
+                        onClick={() =>
+                          window.confirm(REVERSIBLE_TYPES[t.type]) &&
+                          reverseMutation.mutate(t.id)
+                        }
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Undo2 className="h-4 w-4" />
                       </button>
                     )}
                   </TableCell>

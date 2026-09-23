@@ -43,3 +43,14 @@ def pay_invoice(
         db, current_user.id, invoice_id, payload.payment_date, payload.payment_account_id
     )
     return invoice_service.to_invoice_dict(db, invoice)
+
+
+@router.post("/{invoice_id}/undo-payment", response_model=CreditCardInvoiceOut)
+def undo_invoice_payment(
+    invoice_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Desfaz o pagamento mais recente da fatura (o valor volta para a conta)."""
+    invoice = invoice_service.undo_invoice_payment(db, current_user.id, invoice_id)
+    return invoice_service.to_invoice_dict(db, invoice)

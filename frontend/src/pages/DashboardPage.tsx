@@ -103,6 +103,11 @@ export function DashboardPage() {
           label="Projeção 30 dias"
           value={formatCurrency(data.projection_30d.projected_balance)}
           icon={Wallet}
+          hint={
+            Number(data.projection_30d.card_invoices_due) > 0
+              ? `inclui ${formatCurrency(data.projection_30d.card_invoices_due)} de faturas`
+              : undefined
+          }
         />
       </div>
 

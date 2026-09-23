@@ -7,11 +7,13 @@ export function KpiCard({
   value,
   icon: Icon,
   tone = "default",
+  hint,
 }: {
   label: string
   value: string
   icon: LucideIcon
   tone?: "default" | "positive" | "negative"
+  hint?: string
 }) {
   return (
     <Card>
@@ -27,6 +29,7 @@ export function KpiCard({
           >
             {value}
           </p>
+          {hint && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{hint}</p>}
         </div>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Icon className="h-5 w-5" />

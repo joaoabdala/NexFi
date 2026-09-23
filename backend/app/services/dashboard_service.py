@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -15,7 +15,7 @@ from app.models.enums import (
 from app.models.financing import Amortization, CommitmentInstallment, FinancialCommitment
 from app.models.transaction import Transaction
 from app.repositories import account_repository, card_repository
-from app.services.balance_service import get_account_balance, get_projected_balance
+from app.services.balance_service import get_account_balance, get_card_invoices_due, get_projected_balance
 from app.services.card_service import card_metrics as card_with_metrics
 from app.services.financing_service import commitment_with_indicators
 from app.utils.dates import add_months, month_first_day, local_today
@@ -333,15 +333,19 @@ def get_projection(db: Session, user_id: uuid.UUID, horizon_days: int) -> dict:
     accounts = account_repository.list_by_user(db, user_id, active_only=True)
     current = Decimal("0")
     projected = Decimal("0")
+    card_invoices = Decimal("0")
+    limit_date = local_today() + timedelta(days=horizon_days)
     for account in accounts:
         if not account.include_in_available_worth:
             continue
         current += get_account_balance(db, account)
         projected += get_projected_balance(db, account, horizon_days)
+        card_invoices += get_card_invoices_due(db, account, limit_date)
     return {
         "horizon_days": horizon_days,
         "current_balance": quantize(current),
         "projected_balance": quantize(projected),
+        "card_invoices_due": quantize(card_invoices),
     }
 
 

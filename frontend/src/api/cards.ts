@@ -39,4 +39,5 @@ export const invoicesApi = {
   get: (id: string) => api.get<CreditCardInvoice>(`/invoices/${id}`).then((r) => r.data),
   pay: (id: string, payload: { payment_date: string; payment_account_id?: string | null }) =>
     api.post<CreditCardInvoice>(`/invoices/${id}/pay`, payload).then((r) => r.data),
+  undoPayment: (id: string) => api.post<CreditCardInvoice>(`/invoices/${id}/undo-payment`).then((r) => r.data),
 }

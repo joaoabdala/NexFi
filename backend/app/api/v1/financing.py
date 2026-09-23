@@ -74,3 +74,16 @@ def pay_installment(
     db: Session = Depends(get_db),
 ):
     return financing_service.pay_installment(db, current_user.id, commitment_id, installment_id, payload)
+
+
+@router.post(
+    "/{commitment_id}/installments/{installment_id}/undo-payment", response_model=CommitmentInstallmentOut
+)
+def undo_installment_payment(
+    commitment_id: uuid.UUID,
+    installment_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Desfaz o pagamento da parcela (o valor volta para a conta e a parcela fica pendente)."""
+    return financing_service.undo_installment_payment(db, current_user.id, commitment_id, installment_id)

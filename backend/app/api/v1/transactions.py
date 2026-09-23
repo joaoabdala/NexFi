@@ -101,3 +101,14 @@ def cancel_transaction(
 ):
     transaction_service.cancel_transaction(db, current_user.id, transaction_id)
     return MessageResponse(message="Transação cancelada.")
+
+
+@router.post("/{transaction_id}/reverse", response_model=MessageResponse)
+def reverse_transaction(
+    transaction_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Desfaz transferência, pagamento de fatura ou pagamento de parcela a partir do lançamento."""
+    transaction_service.reverse_transaction(db, current_user.id, transaction_id)
+    return MessageResponse(message="Lançamento desfeito.")

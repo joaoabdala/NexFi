@@ -83,3 +83,26 @@ def create_transfer(db: Session, user_id: uuid.UUID, payload: TransferCreate) ->
         raise
     db.refresh(transfer)
     return transfer
+
+
+def cancel_transfer(db: Session, user_id: uuid.UUID, transfer_id: uuid.UUID) -> Transfer:
+    """Desfaz uma transferência: os dois lançamentos (saída e entrada) ficam CANCELADOS e os
+    saldos das duas contas voltam ao que eram. O registro continua no histórico."""
+    transfer = get_transfer(db, user_id, transfer_id)
+    legs = list(
+        db.scalars(
+            select(Transaction).where(
+                Transaction.transfer_id == transfer.id,
+                Transaction.user_id == user_id,
+                Transaction.status == TransactionStatus.CONFIRMADA,
+            )
+        )
+    )
+    if not legs:
+        raise ValidationError("Esta transferência já foi desfeita.")
+    for leg in legs:
+        leg.status = TransactionStatus.CANCELADA
+        db.add(leg)
+    db.commit()
+    db.refresh(transfer)
+    return transfer

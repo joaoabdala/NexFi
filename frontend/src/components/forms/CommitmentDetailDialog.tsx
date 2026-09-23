@@ -55,6 +55,15 @@ export function CommitmentDetailDialog({
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível registrar o pagamento."), variant: "error" }),
   })
 
+  const undoMutation = useMutation({
+    mutationFn: (installmentId: string) => financingApi.undoInstallmentPayment(commitmentId!, installmentId),
+    onSuccess: () => {
+      invalidateFinancialData(queryClient)
+      notify({ title: "Pagamento desfeito. O valor voltou para a conta.", variant: "success" })
+    },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível desfazer o pagamento."), variant: "error" }),
+  })
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,6 +119,22 @@ export function CommitmentDetailDialog({
                       }}
                     >
                       Pagar
+                    </Button>
+                  )}
+                  {installment.status === "PAGA" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={undoMutation.isPending}
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          `Desfazer o pagamento da parcela ${installment.number}? ` +
+                            "O valor volta para a conta e a parcela fica pendente de novo.",
+                        )
+                        if (confirmed) undoMutation.mutate(installment.id)
+                      }}
+                    >
+                      Desfazer
                     </Button>
                   )}
                 </div>

@@ -73,6 +73,8 @@ class ProjectionOut(BaseModel):
     horizon_days: int
     current_balance: Decimal
     projected_balance: Decimal
+    # Parte da projeção que vem de faturas de cartão em aberto (já descontada de projected_balance).
+    card_invoices_due: Decimal = Decimal("0")
 
 
 class DashboardOut(BaseModel):
