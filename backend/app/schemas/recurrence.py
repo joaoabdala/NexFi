@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import RecurrenceFrequency, TransactionType
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, PositiveMoney
 
 RECURRENCE_TYPES = {TransactionType.RECEITA, TransactionType.DESPESA}
 
@@ -13,7 +13,7 @@ RECURRENCE_TYPES = {TransactionType.RECEITA, TransactionType.DESPESA}
 class RecurrenceCreate(BaseModel):
     description: str = Field(min_length=1, max_length=255)
     type: TransactionType
-    amount: Decimal
+    amount: PositiveMoney
     account_id: uuid.UUID
     category_id: uuid.UUID | None = None
     frequency: RecurrenceFrequency
@@ -40,7 +40,7 @@ class RecurrenceCreate(BaseModel):
 
 class RecurrenceUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=255)
-    amount: Decimal | None = None
+    amount: PositiveMoney | None = None
     category_id: uuid.UUID | None = None
     active: bool | None = None
     end_date: date | None = None

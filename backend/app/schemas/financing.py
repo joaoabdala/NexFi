@@ -10,19 +10,19 @@ from app.models.enums import (
     CommitmentStatus,
     CommitmentType,
 )
-from app.schemas.common import ORMModel
+from app.schemas.common import NonNegativeMoney, ORMModel, PositiveMoney
 
 
 class FinancialCommitmentCreate(BaseModel):
     institution_id: uuid.UUID
     type: CommitmentType
     name: str = Field(min_length=1, max_length=255)
-    asset_value: Decimal | None = None
-    down_payment: Decimal | None = None
-    financed_amount: Decimal
+    asset_value: NonNegativeMoney | None = None
+    down_payment: NonNegativeMoney | None = None
+    financed_amount: PositiveMoney
     interest_rate: Decimal | None = None
     installments_total: int = Field(ge=1, le=600)
-    default_installment_amount: Decimal
+    default_installment_amount: PositiveMoney
     start_date: date
     due_day: int = Field(ge=1, le=31)
     note: str | None = None
@@ -76,12 +76,12 @@ class FinancialCommitmentOut(ORMModel):
 class InstallmentPayRequest(BaseModel):
     payment_date: date
     account_id: uuid.UUID
-    paid_amount: Decimal | None = None
+    paid_amount: PositiveMoney | None = None
 
 
 class AmortizationCreate(BaseModel):
     date: date
-    paid_amount: Decimal
+    paid_amount: PositiveMoney
     type: AmortizationType
     account_id: uuid.UUID
     installment_numbers: list[int] | None = Field(

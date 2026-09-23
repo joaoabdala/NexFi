@@ -3,18 +3,18 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, PositiveMoney
 
 
 class BudgetCreate(BaseModel):
     category_id: uuid.UUID
-    amount: Decimal
+    amount: PositiveMoney
     month: int | None = Field(default=None, ge=1, le=12)
     year: int | None = Field(default=None, ge=2000, le=2100)
 
 
 class BudgetUpdate(BaseModel):
-    amount: Decimal
+    amount: PositiveMoney
 
 
 class BudgetOut(ORMModel):

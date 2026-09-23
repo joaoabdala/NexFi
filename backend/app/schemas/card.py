@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import InvoiceStatus
-from app.schemas.common import ORMModel
+from app.schemas.common import NonNegativeMoney, ORMModel, PositiveMoney
 
 
 class CreditCardCreate(BaseModel):
@@ -13,7 +13,7 @@ class CreditCardCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     brand: str | None = Field(default=None, max_length=32)
     last_digits: str | None = Field(default=None, max_length=4)
-    credit_limit: Decimal
+    credit_limit: NonNegativeMoney
     closing_day: int = Field(ge=1, le=31)
     due_day: int = Field(ge=1, le=31)
     default_payment_account_id: uuid.UUID
@@ -24,7 +24,7 @@ class CreditCardUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     brand: str | None = None
     last_digits: str | None = None
-    credit_limit: Decimal | None = None
+    credit_limit: NonNegativeMoney | None = None
     closing_day: int | None = Field(default=None, ge=1, le=31)
     due_day: int | None = Field(default=None, ge=1, le=31)
     default_payment_account_id: uuid.UUID | None = None
@@ -71,7 +71,7 @@ class CreditCardInvoiceOut(ORMModel):
 
 class CreditCardPurchaseCreate(BaseModel):
     description: str = Field(min_length=1, max_length=255)
-    total_amount: Decimal
+    total_amount: PositiveMoney
     installments_total: int = Field(default=1, ge=1, le=60)
     purchase_date: date
     category_id: uuid.UUID | None = None

@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import TransactionStatus, TransactionType
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, PositiveMoney
 
 MANUAL_TYPES = {TransactionType.RECEITA, TransactionType.DESPESA, TransactionType.RENDIMENTO}
 
@@ -14,7 +14,7 @@ MANUAL_TYPES = {TransactionType.RECEITA, TransactionType.DESPESA, TransactionTyp
 class TransactionCreate(BaseModel):
     description: str = Field(min_length=1, max_length=255)
     type: TransactionType
-    amount: Decimal
+    amount: PositiveMoney
     account_id: uuid.UUID
     category_id: uuid.UUID | None = None
     competence_date: date
@@ -42,7 +42,7 @@ class TransactionCreate(BaseModel):
 
 class TransactionUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=1, max_length=255)
-    amount: Decimal | None = None
+    amount: PositiveMoney | None = None
     account_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
     competence_date: date | None = None

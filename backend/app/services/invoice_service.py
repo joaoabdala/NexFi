@@ -9,7 +9,7 @@ from app.models.card import CreditCard, CreditCardInvoice
 from app.models.enums import InvoiceStatus, TransactionStatus, TransactionType
 from app.models.transaction import Transaction
 from app.repositories import card_repository
-from app.utils.dates import safe_day_in_month
+from app.utils.dates import safe_day_in_month, local_today
 from app.utils.money import quantize, to_decimal
 
 
@@ -49,7 +49,7 @@ def compute_invoice_amount(db: Session, invoice: CreditCardInvoice) -> Decimal:
 def refresh_invoice_status(invoice: CreditCardInvoice) -> CreditCardInvoice:
     if invoice.status == InvoiceStatus.PAGA:
         return invoice
-    today = date.today()
+    today = local_today()
     if today > invoice.due_date:
         invoice.status = InvoiceStatus.VENCIDA
     elif today >= invoice.closing_date:

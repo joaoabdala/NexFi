@@ -52,6 +52,11 @@ def _recompute_outstanding_balance(db: Session, commitment: FinancialCommitment)
     db.add(commitment)
 
 
+def _ensure_active(commitment: FinancialCommitment) -> None:
+    if commitment.status != CommitmentStatus.ATIVO:
+        raise ValidationError("Só é possível pagar ou amortizar financiamentos ativos.")
+
+
 def _generate_schedule(db: Session, commitment: FinancialCommitment) -> None:
     for number in range(1, commitment.installments_total + 1):
         due_date = add_months(commitment.start_date, number - 1)
@@ -94,8 +99,19 @@ def commitment_with_indicators(db: Session, commitment: FinancialCommitment) -> 
     total_amortized = quantize(
         sum((to_decimal(a.nominal_amortized_amount) for a in amortizations), Decimal("0"))
     )
+    early_payment_discounts = sum(
+        (
+            to_decimal(i.updated_amount) - to_decimal(i.paid_amount)
+            for i in paid
+            if i.paid_amount is not None and to_decimal(i.paid_amount) < to_decimal(i.updated_amount)
+        ),
+        Decimal("0"),
+    )
+    # Economia = descontos das amortizações + descontos de parcelas pagas antes do vencimento
+    # por um valor menor que o da parcela.
     accumulated_savings = quantize(
         sum((to_decimal(a.discount_obtained) for a in amortizations), Decimal("0"))
+        + early_payment_discounts
     )
 
     next_installment = pending[0] if pending else None
@@ -135,13 +151,18 @@ def create_commitment(
     try:
         commitment = FinancialCommitment(
             user_id=user_id,
-            outstanding_balance=payload.financed_amount,
+            outstanding_balance=Decimal("0"),
             status=CommitmentStatus.ATIVO,
             **payload.model_dump(),
         )
         db.add(commitment)
         db.flush()
         _generate_schedule(db, commitment)
+        db.flush()
+        # Saldo devedor = soma das parcelas pendentes, a mesma regra usada depois de cada
+        # pagamento. Usar financed_amount aqui fazia a dívida "pular" no 1º pagamento
+        # (ex.: 100 mil na criação → 359 mil após pagar 1 de 360 parcelas de 1 mil).
+        _recompute_outstanding_balance(db, commitment)
         db.commit()
     except Exception:
         db.rollback()
@@ -170,6 +191,7 @@ def pay_installment(
     payload: InstallmentPayRequest,
 ) -> CommitmentInstallment:
     commitment = get_commitment(db, user_id, commitment_id)
+    _ensure_active(commitment)
     installment = financing_repository.get_installment(db, commitment.id, installment_id)
     if not installment:
         raise NotFoundError("Parcela não encontrada.")
@@ -218,6 +240,15 @@ def create_amortization(
     db: Session, user_id: uuid.UUID, commitment_id: uuid.UUID, payload: AmortizationCreate
 ) -> Amortization:
     commitment = get_commitment(db, user_id, commitment_id)
+    _ensure_active(commitment)
+    if payload.type == AmortizationType.REDUCAO_PARCELA:
+        # Desativada: a fórmula abatia o *desconto* das parcelas em vez do valor pago (pagar
+        # 2 mil de um saldo de 10 mil deixava a dívida em 2 mil). Reativar exige que o usuário
+        # informe o novo valor da parcela calculado pelo banco.
+        raise ValidationError(
+            "Amortização com redução do valor das parcelas não está disponível. "
+            "Use a redução de prazo (escolha as parcelas quitadas)."
+        )
     account = account_repository.get_by_id(db, user_id, payload.account_id)
     if not account:
         raise ValidationError("Conta inválida.")
@@ -251,6 +282,11 @@ def create_amortization(
         sum((to_decimal(i.updated_amount) for i in target_installments), Decimal("0"))
     )
     paid_amount = quantize(payload.paid_amount)
+    if paid_amount > nominal_amortized:
+        raise ValidationError(
+            "O valor pago é maior que a soma das parcelas selecionadas "
+            f"(R$ {nominal_amortized}). Selecione mais parcelas ou revise o valor."
+        )
     discount = quantize(nominal_amortized - paid_amount)
 
     try:

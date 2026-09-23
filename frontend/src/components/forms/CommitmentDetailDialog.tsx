@@ -41,15 +41,18 @@ export function CommitmentDetailDialog({
   })
 
   const payMutation = useMutation({
-    mutationFn: (installmentId: string) =>
+    mutationFn: ({ installmentId, paidAmount }: { installmentId: string; paidAmount: number }) =>
       financingApi.payInstallment(commitmentId!, installmentId, {
         payment_date: todayISO(),
         account_id: payAccount,
+        paid_amount: paidAmount,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["financing-installments"] })
       queryClient.invalidateQueries({ queryKey: ["financing"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
       notify({ title: "Parcela paga.", variant: "success" })
     },
     onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível registrar o pagamento."), variant: "error" }),
@@ -104,7 +107,10 @@ export function CommitmentDetailDialog({
                       size="sm"
                       variant="outline"
                       disabled={!payAccount || payMutation.isPending}
-                      onClick={() => payMutation.mutate(installment.id)}
+                      onClick={() => {
+                        const paidAmount = askPaidAmount(installment.number, Number(installment.updated_amount))
+                        if (paidAmount !== null) payMutation.mutate({ installmentId: installment.id, paidAmount })
+                      }}
                     >
                       Pagar
                     </Button>
@@ -118,4 +124,25 @@ export function CommitmentDetailDialog({
       <AmortizationFormDialog open={amortizationOpen} onOpenChange={setAmortizationOpen} commitmentId={commitmentId} />
     </>
   )
+}
+
+/**
+ * Confirma o pagamento e permite informar o valor efetivamente pago — ao antecipar a parcela o
+ * banco dá desconto, e a diferença entra na "economia acumulada" do financiamento.
+ * Aceita "1.433,00", "1433,00" ou "1433.00". Retorna null se o usuário cancelar.
+ */
+function askPaidAmount(number: number, installmentAmount: number): number | null {
+  const suggested = installmentAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+  for (;;) {
+    const answer = window.prompt(
+      `Pagar a parcela ${number} com a data de hoje.\n` +
+        "Valor efetivamente pago (altere se houve desconto por antecipação):",
+      suggested,
+    )
+    if (answer === null) return null
+    const normalized = answer.includes(",") ? answer.replace(/\./g, "").replace(",", ".") : answer
+    const value = Number(normalized.replace(/[^\d.]/g, ""))
+    if (Number.isFinite(value) && value > 0) return Math.round(value * 100) / 100
+    window.alert("Valor inválido. Informe um valor maior que zero, ex.: 1.433,00")
+  }
 }

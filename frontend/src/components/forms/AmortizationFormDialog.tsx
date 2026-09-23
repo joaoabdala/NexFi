@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 import { amortizationsApi, financingApi } from "@/api/financing"
@@ -18,9 +19,8 @@ import { getApiErrorMessage } from "@/lib/api-error"
 const schema = z.object({
   date: z.string().min(1),
   paid_amount: z.coerce.number().positive("Informe o valor pago."),
-  type: z.enum(["REDUCAO_PRAZO", "REDUCAO_PARCELA"]),
   account_id: z.string().min(1, "Selecione a conta."),
-  installment_numbers: z.array(z.number()).optional(),
+  installment_numbers: z.array(z.number()).min(1, "Selecione as parcelas quitadas."),
   note: z.string().optional(),
 })
 
@@ -52,14 +52,24 @@ export function AmortizationFormDialog({
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { date: todayISO(), type: "REDUCAO_PRAZO", installment_numbers: [] },
+    defaultValues: { date: todayISO(), installment_numbers: [] },
   })
 
-  const type = watch("type")
+  // Sem reset, valor pago e parcelas marcadas vazavam para a próxima amortização (inclusive
+  // de outro financiamento).
+  useEffect(() => {
+    if (open) reset({ date: todayISO(), installment_numbers: [], note: "" })
+  }, [open, commitmentId, reset])
+
   const selectedNumbers = watch("installment_numbers") ?? []
+  const paidAmount = Number(watch("paid_amount")) || 0
+  const selectedTotal = pendingInstallments
+    .filter((i) => selectedNumbers.includes(i.number))
+    .reduce((sum, i) => sum + Number(i.updated_amount), 0)
 
   function toggleNumber(n: number) {
     const current = selectedNumbers.includes(n)
@@ -69,11 +79,16 @@ export function AmortizationFormDialog({
   }
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => amortizationsApi.create(commitmentId!, values),
+    // Única modalidade disponível: quitar parcelas (em geral as últimas) com desconto; as demais
+    // continuam com o mesmo valor. A redução do valor das parcelas está desativada no backend.
+    mutationFn: (values: FormValues) =>
+      amortizationsApi.create(commitmentId!, { ...values, type: "REDUCAO_PRAZO" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["financing"] })
       queryClient.invalidateQueries({ queryKey: ["financing-installments"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      queryClient.invalidateQueries({ queryKey: ["transactions"] })
       notify({ title: "Amortização registrada.", variant: "success" })
       onOpenChange(false)
     },
@@ -89,7 +104,8 @@ export function AmortizationFormDialog({
         <DialogHeader>
           <DialogTitle>Amortização extraordinária</DialogTitle>
           <DialogDescription>
-            Reduza o prazo (elimina parcelas futuras) ou o valor das parcelas restantes.
+            Quite parcelas antecipadamente (em geral as últimas) com desconto. As demais parcelas
+            continuam com o mesmo valor.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
@@ -103,25 +119,6 @@ export function AmortizationFormDialog({
               <Input id="paid_amount" type="number" step="0.01" {...register("paid_amount")} />
               {errors.paid_amount && <p className="text-xs text-destructive">{errors.paid_amount.message}</p>}
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Tipo de amortização</Label>
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REDUCAO_PRAZO">Redução de prazo (elimina parcelas)</SelectItem>
-                    <SelectItem value="REDUCAO_PARCELA">Redução de parcela (reduz valor restante)</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -147,22 +144,34 @@ export function AmortizationFormDialog({
             {errors.account_id && <p className="text-xs text-destructive">{errors.account_id.message}</p>}
           </div>
 
-          {type === "REDUCAO_PRAZO" && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Parcelas a eliminar (selecione as últimas parcelas pendentes)</Label>
-              <div className="grid max-h-40 grid-cols-4 gap-2 overflow-y-auto rounded-md border border-border p-2 scrollbar-thin">
-                {pendingInstallments.map((installment) => (
-                  <label key={installment.id} className="flex items-center gap-1.5 text-xs">
-                    <Checkbox
-                      checked={selectedNumbers.includes(installment.number)}
-                      onCheckedChange={() => toggleNumber(installment.number)}
-                    />
-                    {installment.number} ({formatCurrency(installment.updated_amount)})
-                  </label>
-                ))}
-              </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Parcelas quitadas (em geral as últimas pendentes)</Label>
+            <div className="grid max-h-40 grid-cols-4 gap-2 overflow-y-auto rounded-md border border-border p-2 scrollbar-thin">
+              {pendingInstallments.map((installment) => (
+                <label key={installment.id} className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={selectedNumbers.includes(installment.number)}
+                    onCheckedChange={() => toggleNumber(installment.number)}
+                  />
+                  {installment.number} ({formatCurrency(installment.updated_amount)})
+                </label>
+              ))}
             </div>
-          )}
+            {errors.installment_numbers && (
+              <p className="text-xs text-destructive">{errors.installment_numbers.message}</p>
+            )}
+            {selectedNumbers.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Soma das parcelas: {formatCurrency(selectedTotal)}
+                {paidAmount > 0 && paidAmount <= selectedTotal && (
+                  <> · Desconto: {formatCurrency(selectedTotal - paidAmount)}</>
+                )}
+                {paidAmount > selectedTotal && (
+                  <span className="text-destructive"> · Valor pago maior que a soma das parcelas</span>
+                )}
+              </p>
+            )}
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="note">Observação</Label>

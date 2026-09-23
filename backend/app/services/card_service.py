@@ -1,5 +1,4 @@
 import uuid
-from datetime import date
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -10,7 +9,7 @@ from app.models.enums import InvoiceStatus
 from app.repositories import account_repository, card_repository, institution_repository
 from app.schemas.card import CreditCardCreate, CreditCardUpdate
 from app.services.invoice_service import compute_invoice_amount, get_or_create_invoice
-from app.utils.dates import invoice_competence_for_purchase
+from app.utils.dates import invoice_competence_for_purchase, local_today
 from app.utils.money import to_decimal
 
 
@@ -31,7 +30,7 @@ def get_cardcard_metrics(db: Session, user_id: uuid.UUID, card_id: uuid.UUID) ->
 
 
 def card_metrics(db: Session, card: CreditCard) -> dict:
-    current_competence = invoice_competence_for_purchase(date.today(), card.closing_day)
+    current_competence = invoice_competence_for_purchase(local_today(), card.closing_day)
     current_invoice = get_or_create_invoice(db, card, current_competence)
     current_amount = compute_invoice_amount(db, current_invoice)
 

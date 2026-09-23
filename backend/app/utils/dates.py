@@ -1,5 +1,18 @@
 import calendar
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from app.core.config import settings
+
+
+def local_today() -> date:
+    """Data de hoje no fuso da aplicação (America/Sao_Paulo por padrão).
+
+    Não usar ``date.today()``: na Vercel o servidor roda em UTC, e a partir das 21h no Brasil
+    isso já é o dia seguinte — faturas apareceriam vencidas no próprio dia do vencimento e o
+    dashboard viraria o mês antes da hora no último dia.
+    """
+    return datetime.now(ZoneInfo(settings.APP_TIMEZONE)).date()
 
 
 def month_first_day(year: int, month: int) -> date:
@@ -23,9 +36,11 @@ def invoice_competence_for_purchase(purchase_date: date, closing_day: int) -> da
     """Determina o mês de competência da fatura para uma compra.
 
     Se a compra ocorreu no dia do fechamento ou depois, cai na fatura do mês seguinte;
-    caso contrário, cai na fatura do mês corrente.
+    caso contrário, cai na fatura do mês corrente. O fechamento é ajustado ao tamanho do mês
+    (dia 31 em fevereiro fecha no dia 28/29), igual à data de fechamento da própria fatura.
     """
-    if purchase_date.day >= closing_day:
+    closing_date = safe_day_in_month(purchase_date.year, purchase_date.month, closing_day)
+    if purchase_date >= closing_date:
         target = add_months(purchase_date, 1)
     else:
         target = purchase_date

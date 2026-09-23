@@ -9,6 +9,7 @@ from app.models.enums import TransactionStatus, TransactionType
 from app.models.transaction import Transaction
 from app.models.transfer import Transfer
 from app.utils.money import to_decimal
+from app.utils.dates import local_today
 
 DEBIT_TYPES = {
     TransactionType.DESPESA,
@@ -62,7 +63,7 @@ def get_projected_balance(db: Session, account: Account, horizon_days: int = 30)
     from datetime import date, timedelta
 
     current = get_account_balance(db, account)
-    limit_date = date.today() + timedelta(days=horizon_days)
+    limit_date = local_today() + timedelta(days=horizon_days)
     stmt = select(Transaction).where(
         Transaction.account_id == account.id,
         Transaction.status == TransactionStatus.PENDENTE,

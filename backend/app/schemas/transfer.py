@@ -4,13 +4,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, PositiveMoney
 
 
 class TransferCreate(BaseModel):
     from_account_id: uuid.UUID
     to_account_id: uuid.UUID
-    amount: Decimal
+    amount: PositiveMoney
     date: date
     description: str | None = Field(default=None, max_length=255)
     note: str | None = None

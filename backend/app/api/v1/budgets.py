@@ -1,5 +1,4 @@
 import uuid
-from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -10,6 +9,7 @@ from app.models.user import User
 from app.schemas.budget import BudgetCreate, BudgetOut, BudgetSummaryItem, BudgetUpdate
 from app.schemas.common import MessageResponse
 from app.services import budget_service
+from app.utils.dates import local_today
 
 router = APIRouter()
 
@@ -50,8 +50,8 @@ def delete_budget(
 
 @router.get("/summary", response_model=list[BudgetSummaryItem])
 def get_summary(
-    year: int = Query(default_factory=lambda: date.today().year),
-    month: int = Query(default_factory=lambda: date.today().month),
+    year: int = Query(default_factory=lambda: local_today().year),
+    month: int = Query(default_factory=lambda: local_today().month),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

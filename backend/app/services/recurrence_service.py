@@ -10,7 +10,7 @@ from app.models.recurrence import RecurrenceRule
 from app.models.transaction import Transaction
 from app.repositories import account_repository, category_repository, recurrence_repository
 from app.schemas.recurrence import RecurrenceCreate, RecurrenceUpdate
-from app.utils.dates import add_months, safe_day_in_month
+from app.utils.dates import add_months, safe_day_in_month, local_today
 
 
 def _next_occurrence(rule: RecurrenceRule, current: date) -> date:
@@ -87,7 +87,7 @@ def generate_pending_transactions(
         if rule_id
         else recurrence_repository.list_active(db, user_id)
     )
-    horizon = date.today() + timedelta(days=30 * settings.RECURRENCE_HORIZON_MONTHS)
+    horizon = local_today() + timedelta(days=30 * settings.RECURRENCE_HORIZON_MONTHS)
     created = 0
 
     for rule in rules:

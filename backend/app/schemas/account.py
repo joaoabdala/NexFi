@@ -5,14 +5,14 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.models.enums import AccountType
-from app.schemas.common import ORMModel
+from app.schemas.common import Money, ORMModel
 
 
 class AccountCreate(BaseModel):
     institution_id: uuid.UUID
     name: str = Field(min_length=1, max_length=255)
     type: AccountType
-    initial_balance: Decimal
+    initial_balance: Money
     initial_balance_date: date
     active: bool = True
     include_in_available_worth: bool = True
@@ -46,7 +46,7 @@ class AccountOut(ORMModel):
 
 
 class BalanceAdjustmentCreate(BaseModel):
-    informed_balance: Decimal
+    informed_balance: Money
     date: date
     note: str | None = None
 

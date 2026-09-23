@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
@@ -18,12 +18,12 @@ from app.repositories import account_repository, card_repository
 from app.services.balance_service import get_account_balance, get_projected_balance
 from app.services.card_service import card_metrics as card_with_metrics
 from app.services.financing_service import commitment_with_indicators
-from app.utils.dates import add_months, month_first_day
+from app.utils.dates import add_months, month_first_day, local_today
 from app.utils.money import quantize, to_decimal
 
 
 def _month_range(period: str) -> list[tuple[int, int]]:
-    today = date.today()
+    today = local_today()
     if period == "3m":
         count = 3
     elif period == "12m":
@@ -57,7 +57,9 @@ def _sum_by_type_and_month(
 
 
 def _worth_as_of(db: Session, user_id: uuid.UUID, as_of: date) -> tuple[Decimal, Decimal]:
-    accounts = account_repository.list_by_user(db, user_id)
+    # Mesmas contas do "saldo disponível" (só ativas) — antes contas desativadas entravam no
+    # patrimônio mas não no saldo, e os dois números não batiam.
+    accounts = account_repository.list_by_user(db, user_id, active_only=True)
     gross = Decimal("0")
     for account in accounts:
         if not (account.include_in_available_worth or account.include_in_invested_worth):
@@ -66,7 +68,10 @@ def _worth_as_of(db: Session, user_id: uuid.UUID, as_of: date) -> tuple[Decimal,
             Transaction.account_id == account.id,
             Transaction.status == TransactionStatus.CONFIRMADA,
             Transaction.deleted_at.is_(None),
-            Transaction.competence_date <= as_of,
+            # Data em que o dinheiro saiu/entrou da conta, não a competência: um pagamento de
+            # fatura feito hoje tem competência no dia 1º do mês da fatura (às vezes no futuro)
+            # e sumia do patrimônio de hoje, embora já tivesse saído do saldo.
+            func.coalesce(Transaction.payment_date, Transaction.competence_date) <= as_of,
         )
         from app.services.balance_service import _signed_contribution
         from app.models.transfer import Transfer
@@ -84,7 +89,12 @@ def _worth_as_of(db: Session, user_id: uuid.UUID, as_of: date) -> tuple[Decimal,
         gross += balance
 
     commitments = list(
-        db.scalars(select(FinancialCommitment).where(FinancialCommitment.user_id == user_id))
+        db.scalars(
+            select(FinancialCommitment).where(
+                FinancialCommitment.user_id == user_id,
+                FinancialCommitment.status != CommitmentStatus.CANCELADO,
+            )
+        )
     )
     debt = Decimal("0")
     for commitment in commitments:
@@ -111,7 +121,7 @@ def _worth_as_of(db: Session, user_id: uuid.UUID, as_of: date) -> tuple[Decimal,
                 amortization = db.get(Amortization, installment.amortization_id)
                 if amortization and amortization.date <= as_of:
                     continue
-            debt += to_decimal(installment.original_amount)
+            debt += to_decimal(installment.updated_amount)
 
     gross = quantize(gross)
     net = quantize(gross - debt)
@@ -119,7 +129,7 @@ def _worth_as_of(db: Session, user_id: uuid.UUID, as_of: date) -> tuple[Decimal,
 
 
 def get_summary(db: Session, user_id: uuid.UUID) -> dict:
-    today = date.today()
+    today = local_today()
     accounts = account_repository.list_by_user(db, user_id, active_only=True)
     available_balance = Decimal("0")
     for account in accounts:
@@ -331,7 +341,7 @@ def get_projection(db: Session, user_id: uuid.UUID, horizon_days: int) -> dict:
 
 
 def get_dashboard(db: Session, user_id: uuid.UUID, period: str = "6m") -> dict:
-    today = date.today()
+    today = local_today()
     return {
         "summary": get_summary(db, user_id),
         "accounts": get_accounts_summary(db, user_id),
