@@ -1,5 +1,5 @@
 import { api } from "@/lib/api"
-import type { CreditCard, CreditCardInvoice, CreditCardPurchase } from "@/types"
+import type { CreditCard, CreditCardInvoice, CreditCardPurchase, InvoiceProjection } from "@/types"
 
 export interface CardInput {
   institution_id: string
@@ -23,6 +23,8 @@ export interface PurchaseInput {
 
 export const cardsApi = {
   list: () => api.get<CreditCard[]>("/cards").then((r) => r.data),
+  invoiceProjection: (months = 12) =>
+    api.get<InvoiceProjection>("/cards/invoice-projection", { params: { months } }).then((r) => r.data),
   create: (payload: CardInput) => api.post<CreditCard>("/cards", payload).then((r) => r.data),
   update: (id: string, payload: Partial<CardInput>) =>
     api.put<CreditCard>(`/cards/${id}`, payload).then((r) => r.data),

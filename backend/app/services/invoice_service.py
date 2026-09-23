@@ -247,3 +247,52 @@ def undo_invoice_payment(
         raise
     db.refresh(invoice)
     return invoice
+
+
+def get_invoice_projection(db: Session, user_id: uuid.UUID, months: int = 12) -> dict:
+    """Quanto falta pagar de fatura em cada um dos próximos ``months`` meses, por cartão.
+
+    Agrupa pelo mês de VENCIMENTO (é quando o dinheiro sai). As parcelas futuras das compras
+    parceladas já estão alocadas nas faturas dos meses seguintes, então a projeção sai direto
+    delas. Considera o que ainda falta pagar: fatura paga conta 0; fatura reaberta por compra
+    nova conta só a diferença.
+    """
+    today = local_today()
+    start = date(today.year, today.month, 1)
+    end_month_index = today.month - 1 + months
+    end = date(today.year + end_month_index // 12, end_month_index % 12 + 1, 1)
+
+    cards = card_repository.list_cards(db, user_id)
+    invoices = db.scalars(
+        select(CreditCardInvoice)
+        .join(CreditCard, CreditCard.id == CreditCardInvoice.card_id)
+        .where(
+            CreditCard.user_id == user_id,
+            CreditCardInvoice.due_date >= start,
+            CreditCardInvoice.due_date < end,
+        )
+    )
+
+    buckets: dict[tuple[int, int], dict] = {}
+    cursor = start
+    for _ in range(months):
+        buckets[(cursor.year, cursor.month)] = {"year": cursor.year, "month": cursor.month, "total": Decimal("0"), "by_card": {}}
+        next_index = cursor.month  # mês seguinte (0-based + 1)
+        cursor = date(cursor.year + next_index // 12, next_index % 12 + 1, 1)
+
+    cards_with_amount: set[uuid.UUID] = set()
+    for invoice in invoices:
+        remaining = quantize(compute_invoice_amount(db, invoice) - compute_invoice_paid(db, invoice))
+        if remaining <= 0:
+            continue
+        bucket = buckets[(invoice.due_date.year, invoice.due_date.month)]
+        key = str(invoice.card_id)
+        bucket["by_card"][key] = quantize(bucket["by_card"].get(key, Decimal("0")) + remaining)
+        bucket["total"] = quantize(bucket["total"] + remaining)
+        cards_with_amount.add(invoice.card_id)
+
+    return {
+        # Ordem estável (por nome) para a cor seguir o cartão, não a posição no mês.
+        "cards": [{"id": c.id, "name": c.name} for c in cards if c.id in cards_with_amount],
+        "months": list(buckets.values()),
+    }

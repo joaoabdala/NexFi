@@ -70,6 +70,23 @@ class CreditCardInvoiceOut(ORMModel):
     installments: list[CreditCardInstallmentOut] = []
 
 
+class InvoiceProjectionCard(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class InvoiceProjectionMonth(BaseModel):
+    year: int
+    month: int
+    total: Decimal
+    by_card: dict[str, Decimal]
+
+
+class InvoiceProjectionOut(BaseModel):
+    cards: list[InvoiceProjectionCard]
+    months: list[InvoiceProjectionMonth]
+
+
 class CreditCardPurchaseCreate(BaseModel):
     description: str = Field(min_length=1, max_length=255)
     total_amount: PositiveMoney

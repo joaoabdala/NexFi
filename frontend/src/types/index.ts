@@ -351,3 +351,9 @@ export interface Dashboard {
   yield_by_account: YieldByAccount[]
   projection_30d: Projection
 }
+
+export interface InvoiceProjection {
+  /** Cartões com valor a pagar no período, em ordem estável (a cor segue o cartão). */
+  cards: { id: UUID; name: string }[]
+  months: { year: number; month: number; total: string; by_card: Record<UUID, string> }[]
+}

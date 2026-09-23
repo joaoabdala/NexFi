@@ -15,6 +15,7 @@ const FINANCIAL_QUERY_KEYS = [
   "goals",
   "cards",
   "invoices",
+  "invoice-projection",
   "financing",
   "financing-installments",
   "recurrences",

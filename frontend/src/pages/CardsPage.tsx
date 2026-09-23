@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/format"
 import type { CreditCard } from "@/types"
 import { invalidateFinancialData } from "@/lib/invalidate"
 import { getApiErrorMessage } from "@/lib/api-error"
+import { InvoiceProjectionChart } from "@/components/InvoiceProjectionChart"
 
 export function CardsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["cards"], queryFn: cardsApi.list })
@@ -123,6 +124,8 @@ export function CardsPage() {
           ))}
         </div>
       )}
+
+      {data && data.length > 0 && <InvoiceProjectionChart />}
 
       <CardFormDialog open={formOpen} onOpenChange={setFormOpen} card={editing} />
       <PurchaseFormDialog open={purchaseOpen} onOpenChange={setPurchaseOpen} cardId={activeCardId} />

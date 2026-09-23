@@ -32,6 +32,13 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #14bba6;
+  /* Série categórica dos gráficos — validada p/ daltonismo (dataviz/validate_palette.js). */
+  --series-1: #14BBA6;
+  --series-2: #eb6834;
+  --series-3: #2a78d6;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #4a3aa7;
   --success: #16a34a;
   --warning: #d97706;
   --radius: 0.65rem;
@@ -58,6 +65,12 @@
   --border: #1f2937;
   --input: #1f2937;
   --ring: #14bba6;
+  --series-1: #11a594;
+  --series-2: #d95926;
+  --series-3: #3987e5;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #9085e9;
   --success: #4ade80;
   --warning: #fbbf24;
 }
@@ -83,6 +96,12 @@
     --border: #1f2937;
     --input: #1f2937;
     --ring: #14bba6;
+    --series-1: #11a594;
+    --series-2: #d95926;
+    --series-3: #3987e5;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #9085e9;
   }
 }
 

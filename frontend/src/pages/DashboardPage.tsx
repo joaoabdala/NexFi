@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { InvoiceProjectionChart } from "@/components/InvoiceProjectionChart"
 import { LoadError } from "@/components/LoadError"
 
 const PERIODS = [
@@ -186,6 +187,8 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {data.cards.length > 0 && <InvoiceProjectionChart />}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

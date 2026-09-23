@@ -1,12 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.card import (
+    InvoiceProjectionOut,
     CreditCardCreate,
     CreditCardOut,
     CreditCardPurchaseCreate,
@@ -14,7 +15,7 @@ from app.schemas.card import (
     CreditCardUpdate,
 )
 from app.schemas.common import MessageResponse
-from app.services import card_service, purchase_service
+from app.services import card_service, invoice_service, purchase_service
 from app.services.card_service import get_card
 
 router = APIRouter()
@@ -23,6 +24,17 @@ router = APIRouter()
 @router.get("", response_model=list[CreditCardOut])
 def list_cards(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return card_service.list_cards(db, current_user.id)
+
+
+# Declarada antes de "/{card_id}", senão "invoice-projection" seria lido como id de cartão.
+@router.get("/invoice-projection", response_model=InvoiceProjectionOut)
+def invoice_projection(
+    months: int = Query(default=12, ge=1, le=24),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Faturas a pagar mês a mês (pelo vencimento), por cartão."""
+    return invoice_service.get_invoice_projection(db, current_user.id, months)
 
 
 @router.post("", response_model=CreditCardOut, status_code=201)
