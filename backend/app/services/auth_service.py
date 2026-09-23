@@ -20,6 +20,7 @@ def _issue_tokens(db: Session, user: User) -> TokenResponse:
     access_token = create_access_token(str(user.id))
     refresh_token = generate_refresh_token()
     expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    auth_repository.delete_dead_refresh_tokens(db, user.id)
     auth_repository.store_refresh_token(db, user.id, hash_refresh_token(refresh_token), expires_at)
     db.commit()
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

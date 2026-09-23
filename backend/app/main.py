@@ -18,9 +18,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Frontend e API ficam em domínios diferentes na Vercel e toda requisição leva o header
+    # Authorization, o que exige preflight (OPTIONS). Cachear evita um round-trip extra por chamada.
+    max_age=86400,
 )
 
 

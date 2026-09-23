@@ -6,6 +6,7 @@ para multiusuário/SaaS (toda tabela relevante já possui `user_id`).
 
 Documentação complementar:
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — plano, decisões técnicas, ordem de implementação
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — deploy em produção: Vercel (frontend + API) e Neon (Postgres)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — arquitetura, entidades, regras de negócio
 - [`docs/DATABASE.md`](docs/DATABASE.md) — modelo de dados
 
@@ -53,7 +54,7 @@ Basta usar `DATABASE_URL=sqlite:///./dev.db` no `.env` do backend (é o padrão 
 cd backend
 python -m venv .venv
 # Windows: .venv\Scripts\activate | Linux/Mac: source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime + uvicorn + pytest
 cp .env.example .env
 # Ajuste DATABASE_URL no .env conforme a opção escolhida acima
 
@@ -149,8 +150,6 @@ Ver [`backend/.env.example`](backend/.env.example). Nunca versionar `.env` real 
 
 ## Limitações conhecidas / próximos passos
 
-- O bundle de produção do frontend está em um único chunk (~1&nbsp;MB minificado); pode se
-  beneficiar de code-splitting por rota antes de um deploy de alta escala.
 - "Evolução patrimonial" reconstrói o saldo devedor histórico dos financiamentos a partir do
   cronograma de parcelas; para `REDUCAO_PARCELA`, usa o valor original da parcela como
   aproximação para datas passadas (documentado em `docs/ARCHITECTURE.md`).

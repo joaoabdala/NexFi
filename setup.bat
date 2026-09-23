@@ -22,7 +22,7 @@ if not exist "%BACKEND%\.venv\Scripts\python.exe" (
 )
 
 echo [Setup] Instalando dependencias do backend...
-call "%BACKEND%\.venv\Scripts\pip.exe" install -q -r "%BACKEND%\requirements.txt"
+call "%BACKEND%\.venv\Scripts\pip.exe" install -q -r "%BACKEND%\requirements-dev.txt"
 if errorlevel 1 (
     echo [ERRO] Falha ao instalar dependencias do backend.
     pause

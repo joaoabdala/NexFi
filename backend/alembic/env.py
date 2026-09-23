@@ -8,7 +8,9 @@ from app.db.base import Base
 from app.models import *  # noqa: F401,F403 — registra todos os models no metadata
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# "%" precisa ser escapado: o alembic.ini usa ConfigParser com interpolação, e senhas
+# URL-encoded (ex.: %40) quebrariam a leitura da URL.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

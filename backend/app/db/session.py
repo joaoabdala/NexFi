@@ -6,9 +6,23 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import settings
 
 is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-connect_args = {"check_same_thread": False} if is_sqlite else {}
 
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
+if is_sqlite:
+    engine_kwargs: dict = {"connect_args": {"check_same_thread": False}}
+else:
+    engine_kwargs = {
+        # Em produção (Vercel + Neon) a conexão passa pelo pooler do Neon (PgBouncer em modo
+        # transação), então o pool local fica pequeno e as conexões são recicladas antes de o
+        # Neon suspender o compute por inatividade (5 min).
+        "pool_size": 5,
+        "max_overflow": 5,
+        "pool_recycle": 240,
+        # Prepared statements automáticos do psycopg 3 não são seguros atrás do PgBouncer em
+        # modo transação (a conexão física muda entre transações).
+        "connect_args": {"prepare_threshold": None},
+    }
+
+engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, **engine_kwargs)
 
 if is_sqlite:
     # SQLite não aplica FKs (nem ON DELETE CASCADE) por padrão — sem isso, excluir um

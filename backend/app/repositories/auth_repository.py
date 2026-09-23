@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.refresh_token import RefreshToken
@@ -25,3 +25,20 @@ def store_refresh_token(db: Session, user_id, token_hash: str, expires_at: datet
 def revoke_refresh_token(db: Session, record: RefreshToken) -> None:
     record.revoked_at = datetime.now(timezone.utc)
     db.add(record)
+
+
+def delete_dead_refresh_tokens(db: Session, user_id) -> None:
+    """Remove tokens revogados ou expirados do usuário — nenhum deles volta a ser aceito, e
+    com a rotação a cada refresh a tabela cresceria indefinidamente."""
+    # Sem o flush, uma revogação ainda pendente na sessão (autoflush=False) não chega ao banco:
+    # o DELETE casa o objeto só em memória, o descarta da sessão, e a linha fica ativa no banco.
+    db.flush()
+    db.execute(
+        delete(RefreshToken).where(
+            RefreshToken.user_id == user_id,
+            or_(
+                RefreshToken.revoked_at.is_not(None),
+                RefreshToken.expires_at < datetime.now(timezone.utc),
+            ),
+        )
+    )
