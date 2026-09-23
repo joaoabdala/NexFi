@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toaster"
 import { useAuth } from "@/contexts/AuthContext"
 import { formatDate } from "@/lib/format"
 import type { AdminUser } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 export function AdminUsersPage() {
   const { user: currentUser } = useAuth()
@@ -27,9 +28,7 @@ export function AdminUsersPage() {
       notify({ title: "Usuário excluído.", variant: "success" })
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível excluir o usuário."
+      const message = getApiErrorMessage(err, "Não foi possível excluir o usuário.")
       notify({ title: message, variant: "error" })
     },
   })

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { api } from "@/lib/api"
 import { clearTokens, getTokens, setTokens } from "@/lib/auth-storage"
+import { queryClient } from "@/lib/query-client"
 import type { User } from "@/types"
 
 interface AuthContextValue {
@@ -46,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await api.post("/auth/login", form, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     })
+    // Nenhuma chave de query inclui o id do usuário: sem limpar, quem loga na mesma aba veria
+    // por alguns segundos os dados financeiros em cache do usuário anterior.
+    queryClient.clear()
     setTokens(response.data)
     await refreshUser()
   }
@@ -60,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     clearTokens()
+    queryClient.clear()
     setUser(null)
   }
 

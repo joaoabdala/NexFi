@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import type { FinancialGoal } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   name: z.string().min(1, "Informe o nome."),
@@ -66,7 +67,7 @@ export function GoalFormDialog({
       notify({ title: "Meta salva.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar a meta.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar a meta."), variant: "error" }),
   })
 
   return (
@@ -75,7 +76,7 @@ export function GoalFormDialog({
         <DialogHeader>
           <DialogTitle>{goal ? "Editar meta" : "Nova meta"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input id="name" {...register("name")} placeholder="Ex.: Reserva de emergência" />

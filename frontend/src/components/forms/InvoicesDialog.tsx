@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/ui/toaster"
 import { formatCurrency, formatDate, todayISO } from "@/lib/format"
 import type { CreditCardInvoice, InvoiceStatus } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const STATUS_VARIANT: Record<InvoiceStatus, "success" | "warning" | "destructive" | "secondary"> = {
   ABERTA: "secondary",
@@ -44,12 +45,7 @@ export function InvoicesDialog({
       queryClient.invalidateQueries({ queryKey: ["accounts"] })
       notify({ title: "Fatura paga.", variant: "success" })
     },
-    onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível pagar a fatura."
-      notify({ title: message, variant: "error" })
-    },
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível pagar a fatura."), variant: "error" }),
   })
 
   return (
@@ -85,7 +81,18 @@ export function InvoicesDialog({
                   {expanded === invoice.id ? "Ocultar itens" : `Ver itens (${invoice.installments.length})`}
                 </button>
                 {invoice.status !== "PAGA" && Number(invoice.amount) > 0 && (
-                  <Button size="sm" variant="outline" onClick={() => payMutation.mutate(invoice.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={payMutation.isPending}
+                    onClick={() => {
+                      const confirmed = window.confirm(
+                        `Pagar a fatura de ${formatDate(invoice.competence)} no valor de ${formatCurrency(invoice.amount)}? ` +
+                          "O valor será debitado da conta de pagamento do cartão com a data de hoje.",
+                      )
+                      if (confirmed) payMutation.mutate(invoice.id)
+                    }}
+                  >
                     Pagar fatura
                   </Button>
                 )}

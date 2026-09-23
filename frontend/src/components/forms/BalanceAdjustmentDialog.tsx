@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toaster"
 import { todayISO } from "@/lib/format"
 import type { Account } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   informed_balance: z.coerce.number(),
@@ -52,9 +53,7 @@ export function BalanceAdjustmentDialog({
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível ajustar o saldo."
+      const message = getApiErrorMessage(err, "Não foi possível ajustar o saldo.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -69,7 +68,7 @@ export function BalanceAdjustmentDialog({
             ajuste auditável — não conta como receita nem despesa.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="informed_balance">Saldo correto</Label>
             <Input id="informed_balance" type="number" step="0.01" {...register("informed_balance")} />

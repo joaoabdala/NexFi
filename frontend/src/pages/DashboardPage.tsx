@@ -210,7 +210,9 @@ export function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.expenses_by_category}
+                    // A API manda Decimal como string ("1.50"); o Pie do Recharts soma só valores
+                    // numéricos e, com strings, o total dá 0 e nenhuma fatia é desenhada.
+                    data={data.expenses_by_category.map((e) => ({ ...e, amount: Number(e.amount) }))}
                     dataKey="amount"
                     nameKey="category_name"
                     innerRadius={55}

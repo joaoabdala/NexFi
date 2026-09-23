@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/toaster"
 import { useAuth } from "@/contexts/AuthContext"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const profileSchema = z.object({
   name: z.string().min(1, "Informe o nome."),
@@ -44,7 +45,7 @@ export function ProfilePage() {
       await refreshUser()
       notify({ title: "Perfil atualizado.", variant: "success" })
     },
-    onError: () => notify({ title: "Não foi possível atualizar o perfil.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível atualizar o perfil."), variant: "error" }),
   })
 
   const passwordForm = useForm<PasswordValues>({ resolver: zodResolver(passwordSchema) })
@@ -56,7 +57,7 @@ export function ProfilePage() {
       notify({ title: "Senha alterada com sucesso.", variant: "success" })
       passwordForm.reset()
     },
-    onError: () => notify({ title: "Senha atual incorreta.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível alterar a senha."), variant: "error" }),
   })
 
   return (
@@ -72,7 +73,7 @@ export function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form
-            onSubmit={profileForm.handleSubmit((v) => profileMutation.mutate(v))}
+            onSubmit={profileForm.handleSubmit((v) => profileMutation.mutateAsync(v).catch(() => {}))}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
@@ -103,7 +104,7 @@ export function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form
-            onSubmit={passwordForm.handleSubmit((v) => passwordMutation.mutate(v))}
+            onSubmit={passwordForm.handleSubmit((v) => passwordMutation.mutateAsync(v).catch(() => {}))}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">

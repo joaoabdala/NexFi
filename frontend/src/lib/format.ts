@@ -27,6 +27,11 @@ export function monthLabel(month: number, year: number): string {
   return new Intl.DateTimeFormat("pt-BR", { month: "short", year: "2-digit" }).format(date)
 }
 
+/** Data de hoje (YYYY-MM-DD) no fuso do navegador. `toISOString()` daria a data em UTC — no
+ * Brasil (UTC-3), depois das 21h isso já é o dia seguinte e o lançamento cairia no mês errado. */
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${now.getFullYear()}-${month}-${day}`
 }

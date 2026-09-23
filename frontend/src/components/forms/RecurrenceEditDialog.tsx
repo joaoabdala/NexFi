@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { formatDate } from "@/lib/format"
 import type { RecurrenceRule } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -83,7 +84,7 @@ export function RecurrenceEditDialog({
       notify({ title: "Recorrência atualizada.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível atualizar a recorrência.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível atualizar a recorrência."), variant: "error" }),
   })
 
   if (!rule) return null
@@ -109,7 +110,7 @@ export function RecurrenceEditDialog({
           <span>Início: {formatDate(rule.start_date)}</span>
         </div>
 
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="description">Descrição</Label>
             <Input id="description" {...register("description")} />

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { formatCurrency, todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   date: z.string().min(1),
@@ -77,9 +78,7 @@ export function AmortizationFormDialog({
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível registrar a amortização."
+      const message = getApiErrorMessage(err, "Não foi possível registrar a amortização.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -93,7 +92,7 @@ export function AmortizationFormDialog({
             Reduza o prazo (elimina parcelas futuras) ou o valor das parcelas restantes.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="date">Data</Label>

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useCategories } from "@/hooks/useReferenceData"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   category_id: z.string().min(1, "Selecione a categoria."),
@@ -62,9 +63,7 @@ export function BudgetFormDialog({ open, onOpenChange }: { open: boolean; onOpen
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível salvar o orçamento."
+      const message = getApiErrorMessage(err, "Não foi possível salvar o orçamento.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -75,7 +74,7 @@ export function BudgetFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         <DialogHeader>
           <DialogTitle>Novo orçamento</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label>Categoria</Label>
             <Controller

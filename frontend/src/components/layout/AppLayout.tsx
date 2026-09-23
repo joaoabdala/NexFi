@@ -1,5 +1,6 @@
 import { Suspense, useState } from "react"
 import { Outlet, useLocation } from "react-router-dom"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { PageFallback } from "@/components/PageFallback"
 import { Sidebar, SidebarContent } from "./Sidebar"
 import { Topbar } from "./Topbar"
@@ -30,9 +31,13 @@ export function AppLayout() {
         <main className="flex-1 overflow-y-auto scrollbar-thin p-4 lg:p-6">
           <div key={location.pathname} className="animate-nexfi-page-in">
             {/* Suspense aqui mantém sidebar/topbar visíveis enquanto a página carrega */}
-            <Suspense fallback={<PageFallback />}>
-              <Outlet />
-            </Suspense>
+            {/* Boundary por página: um erro numa tela não derruba sidebar/topbar; como o div pai
+                tem key=pathname, navegar para outra rota reseta o erro. */}
+            <ErrorBoundary>
+              <Suspense fallback={<PageFallback />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
       </div>

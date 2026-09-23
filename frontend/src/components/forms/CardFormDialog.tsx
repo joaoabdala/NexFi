@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { useAccounts, useInstitutions } from "@/hooks/useReferenceData"
 import type { CreditCard } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   institution_id: z.string().min(1, "Selecione a instituição."),
@@ -71,7 +72,7 @@ export function CardFormDialog({
       notify({ title: "Cartão salvo.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar o cartão.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar o cartão."), variant: "error" }),
   })
 
   return (
@@ -80,7 +81,7 @@ export function CardFormDialog({
         <DialogHeader>
           <DialogTitle>{card ? "Editar cartão" : "Novo cartão"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label>Instituição</Label>
             <Controller

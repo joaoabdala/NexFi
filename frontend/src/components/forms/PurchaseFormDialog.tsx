@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -60,9 +61,7 @@ export function PurchaseFormDialog({
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível registrar a compra."
+      const message = getApiErrorMessage(err, "Não foi possível registrar a compra.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -73,7 +72,7 @@ export function PurchaseFormDialog({
         <DialogHeader>
           <DialogTitle>Nova compra no cartão</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="description">Descrição</Label>
             <Input id="description" {...register("description")} placeholder="Ex.: Notebook" />

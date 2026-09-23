@@ -14,6 +14,7 @@ import { TransferFormDialog } from "@/components/forms/TransferFormDialog"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { formatCurrency, formatDate } from "@/lib/format"
 import type { TransactionStatus, TransactionType } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const TYPE_LABELS: Record<TransactionType, string> = {
   RECEITA: "Receita",
@@ -55,7 +56,7 @@ export function TransactionsPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
       notify({ title: "Transação cancelada.", variant: "success" })
     },
-    onError: () => notify({ title: "Não foi possível cancelar.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível cancelar."), variant: "error" }),
   })
 
   function updateFilter<K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) {

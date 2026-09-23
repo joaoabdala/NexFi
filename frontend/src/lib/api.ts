@@ -13,20 +13,25 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-let refreshPromise: Promise<string | null> | null = null
+/** "expired" = o servidor recusou o refresh token (sessão acabou de fato); "unavailable" = falha
+ * de rede/5xx/cold start — a sessão pode estar ótima, então não desloga. */
+type RefreshResult = { token: string } | "expired" | "unavailable"
 
-async function refreshAccessToken(): Promise<string | null> {
+let refreshPromise: Promise<RefreshResult> | null = null
+
+async function refreshAccessToken(): Promise<RefreshResult> {
   const tokens = getTokens()
-  if (!tokens?.refresh_token) return null
+  if (!tokens?.refresh_token) return "expired"
   try {
     const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
       refresh_token: tokens.refresh_token,
     })
     setTokens(response.data)
-    return response.data.access_token as string
-  } catch {
-    clearTokens()
-    return null
+    return { token: response.data.access_token as string }
+  } catch (error) {
+    const status = (error as AxiosError).response?.status
+    if (status === 401 || status === 403) return "expired"
+    return "unavailable"
   }
 }
 
@@ -34,22 +39,30 @@ interface RetriableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
 }
 
+// Só as rotas que *emitem* ou *encerram* tokens ficam fora do refresh automático. As demais rotas
+// /auth (ex.: GET /auth/me, chamado ao abrir o app) precisam renovar o access token de 15 min —
+// senão qualquer F5 depois de 15 minutos mandava o usuário de volta ao login.
+const NO_REFRESH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"]
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined
-    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes("/auth/")) {
+    const skipRefresh = NO_REFRESH_PATHS.some((path) => original?.url?.includes(path))
+    if (error.response?.status === 401 && original && !original._retry && !skipRefresh) {
       original._retry = true
       refreshPromise ??= refreshAccessToken().finally(() => {
         refreshPromise = null
       })
-      const newToken = await refreshPromise
-      if (newToken) {
-        original.headers.Authorization = `Bearer ${newToken}`
+      const result = await refreshPromise
+      if (typeof result === "object") {
+        original.headers.Authorization = `Bearer ${result.token}`
         return api(original)
       }
-      clearTokens()
-      window.location.href = "/login"
+      if (result === "expired") {
+        clearTokens()
+        window.location.href = "/login" // recarrega a página: limpa também o cache do React Query
+      }
     }
     return Promise.reject(error)
   },

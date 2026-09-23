@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   type: z.enum(["RECEITA", "DESPESA", "RENDIMENTO"]),
@@ -92,7 +93,7 @@ export function TransactionFormDialog({
       reset()
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar a movimentação.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar a movimentação."), variant: "error" }),
   })
 
   return (
@@ -101,7 +102,7 @@ export function TransactionFormDialog({
         <DialogHeader>
           <DialogTitle>Nova movimentação</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-2">
             {(["RECEITA", "DESPESA", "RENDIMENTO"] as const).map((t) => (
               <label

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/toaster"
 import type { AdminUser } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const baseSchema = {
   email: z.string().email("Informe um e-mail válido."),
@@ -81,9 +82,7 @@ export function AdminUserFormDialog({
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível salvar o usuário."
+      const message = getApiErrorMessage(err, "Não foi possível salvar o usuário.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -94,7 +93,7 @@ export function AdminUserFormDialog({
         <DialogHeader>
           <DialogTitle>{isEditing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input id="name" {...register("name")} />

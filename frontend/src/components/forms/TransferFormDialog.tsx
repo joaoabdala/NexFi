@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z
   .object({
@@ -54,9 +55,7 @@ export function TransferFormDialog({ open, onOpenChange }: { open: boolean; onOp
       onOpenChange(false)
     },
     onError: (err: unknown) => {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        "Não foi possível realizar a transferência."
+      const message = getApiErrorMessage(err, "Não foi possível realizar a transferência.")
       notify({ title: message, variant: "error" })
     },
   })
@@ -67,7 +66,7 @@ export function TransferFormDialog({ open, onOpenChange }: { open: boolean; onOp
         <DialogHeader>
           <DialogTitle>Transferência entre contas</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label>Conta de origem</Label>
             <Controller

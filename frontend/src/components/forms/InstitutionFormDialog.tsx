@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toaster"
 import type { Institution } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   name: z.string().min(1, "Informe o nome."),
@@ -56,7 +57,7 @@ export function InstitutionFormDialog({
       notify({ title: "Instituição salva.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar a instituição.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar a instituição."), variant: "error" }),
   })
 
   return (
@@ -65,7 +66,7 @@ export function InstitutionFormDialog({
         <DialogHeader>
           <DialogTitle>{institution ? "Editar instituição" : "Nova instituição"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input id="name" {...register("name")} placeholder="Ex.: Nubank" />

@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toaster"
 import { useInstitutions } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
 import type { Account, AccountType } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: "CONTA_CORRENTE", label: "Conta corrente" },
@@ -86,7 +87,7 @@ export function AccountFormDialog({
       notify({ title: "Conta salva.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar a conta.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar a conta."), variant: "error" }),
   })
 
   return (
@@ -95,7 +96,7 @@ export function AccountFormDialog({
         <DialogHeader>
           <DialogTitle>{account ? "Editar conta" : "Nova conta"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label>Instituição</Label>
             <Controller

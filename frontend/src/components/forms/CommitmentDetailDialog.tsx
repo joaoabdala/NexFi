@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toaster"
 import { useAccounts } from "@/hooks/useReferenceData"
 import { formatCurrency, formatDate, todayISO } from "@/lib/format"
 import type { CommitmentInstallmentStatus } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const STATUS_VARIANT: Record<CommitmentInstallmentStatus, "success" | "warning" | "destructive" | "secondary"> = {
   PENDENTE: "secondary",
@@ -51,7 +52,7 @@ export function CommitmentDetailDialog({
       queryClient.invalidateQueries({ queryKey: ["dashboard"] })
       notify({ title: "Parcela paga.", variant: "success" })
     },
-    onError: () => notify({ title: "Selecione uma conta e tente novamente.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível registrar o pagamento."), variant: "error" }),
   })
 
   return (

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { useCategories } from "@/hooks/useReferenceData"
 import type { Category } from "@/types"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   name: z.string().min(1, "Informe o nome."),
@@ -64,7 +65,7 @@ export function CategoryFormDialog({
       notify({ title: "Categoria salva.", variant: "success" })
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível salvar a categoria.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível salvar a categoria."), variant: "error" }),
   })
 
   const topLevelCategories = (categories ?? []).filter((c) => !c.parent_id && c.id !== category?.id)
@@ -75,7 +76,7 @@ export function CategoryFormDialog({
         <DialogHeader>
           <DialogTitle>{category ? "Editar categoria" : "Nova categoria"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome</Label>
             <Input id="name" {...register("name")} placeholder="Ex.: Alimentação" />

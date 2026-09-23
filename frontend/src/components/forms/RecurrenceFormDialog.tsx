@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toaster"
 import { flattenCategories, useAccounts, useCategories } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   description: z.string().min(1, "Informe a descrição."),
@@ -58,7 +59,7 @@ export function RecurrenceFormDialog({ open, onOpenChange }: { open: boolean; on
       reset()
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível criar a recorrência.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível criar a recorrência."), variant: "error" }),
   })
 
   return (
@@ -67,7 +68,7 @@ export function RecurrenceFormDialog({ open, onOpenChange }: { open: boolean; on
         <DialogHeader>
           <DialogTitle>Nova recorrência</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="description">Descrição</Label>
             <Input id="description" {...register("description")} placeholder="Ex.: Netflix" />

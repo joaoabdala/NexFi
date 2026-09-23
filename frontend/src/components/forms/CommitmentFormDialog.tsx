@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toaster"
 import { useInstitutions } from "@/hooks/useReferenceData"
 import { todayISO } from "@/lib/format"
+import { getApiErrorMessage } from "@/lib/api-error"
 
 const schema = z.object({
   institution_id: z.string().min(1, "Selecione a instituição."),
@@ -54,7 +55,7 @@ export function CommitmentFormDialog({ open, onOpenChange }: { open: boolean; on
       reset()
       onOpenChange(false)
     },
-    onError: () => notify({ title: "Não foi possível cadastrar o financiamento.", variant: "error" }),
+    onError: (err: unknown) => notify({ title: getApiErrorMessage(err, "Não foi possível cadastrar o financiamento."), variant: "error" }),
   })
 
   return (
@@ -63,7 +64,7 @@ export function CommitmentFormDialog({ open, onOpenChange }: { open: boolean; on
         <DialogHeader>
           <DialogTitle>Novo financiamento</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit((v) => mutation.mutateAsync(v).catch(() => {}))} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Nome / descrição</Label>
             <Input id="name" {...register("name")} placeholder="Ex.: Financiamento Apartamento" />
